@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ArrowLeft, Download } from 'lucide-react'
+import { format } from 'date-fns'
 
 function ParticipantsContent() {
   const params = useParams()
@@ -14,6 +15,7 @@ function ParticipantsContent() {
   const [event, setEvent] = useState(null)
   const [participants, setParticipants] = useState([])
   const [loading, setLoading] = useState(true)
+  const [columnHeaders, setColumnHeaders] = useState([]) // NEW: To store dynamic column headers
 
   useEffect(() => {
     if (params.eventId) {
@@ -23,16 +25,32 @@ function ParticipantsContent() {
 
   const fetchData = async () => {
     try {
+      setLoading(true)
       const [eventRes, participantsRes] = await Promise.all([
+        // Fetch event details to get the form schema
         fetch(`/api/events/${params.eventId}`),
+        // Fetch all participants
         fetch(`/api/participants/${params.eventId}`),
       ])
 
       const eventData = await eventRes.json()
       const participantsData = await participantsRes.json()
+      
+      let fields = [];
 
-      if (eventData.success) setEvent(eventData.event)
-      if (participantsData.success) setParticipants(participantsData.participants)
+      if (eventData.success && eventData.event) {
+          setEvent(eventData.event)
+          fields = eventData.event.form_fields || []
+      }
+      
+      if (participantsData.success && participantsData.participants) {
+          setParticipants(participantsData.participants)
+      }
+      
+      // Determine dynamic headers from the form schema
+      const dynamicHeaders = fields.map(field => field.label)
+      setColumnHeaders(dynamicHeaders)
+
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -46,20 +64,29 @@ function ParticipantsContent() {
       return
     }
 
-    // Get all unique field names
-    const fieldNames = new Set()
-    participants.forEach((p) => {
-      Object.keys(p.responses).forEach((key) => fieldNames.add(key))
-    })
-
-    const headers = ['ID', 'Registration Date', ...Array.from(fieldNames)]
-    const rows = participants.map((p) => {
+    // Use the determined column headers (labels) for the CSV
+    const headers = ['#', 'Registration Date', ...columnHeaders]
+    
+    const rows = participants.map((p, index) => {
       const row = [
-        p.id,
+        index + 1,
         new Date(p.created_at).toLocaleString(),
       ]
-      fieldNames.forEach((field) => {
-        row.push(p.responses[field] || '')
+      
+      // Map responses using the column headers (labels)
+      columnHeaders.forEach((label) => {
+        // Find the matching key in the responses object. 
+        // NOTE: We assume the key in p.responses is the field label OR the field id.
+        // Based on DynamicForm.js and FormBuilder.js, the key is the field.id || field.label. 
+        // For simplicity, we stick to the LABEL, as it is unique and what the admin expects.
+        let value = p.responses[label] || '';
+        
+        // Format boolean values
+        if (typeof value === 'boolean') {
+             value = value ? 'Yes' : 'No';
+        }
+
+        row.push(value)
       })
       return row
     })
@@ -85,6 +112,21 @@ function ParticipantsContent() {
       </div>
     )
   }
+
+  // --- RENDERING LOGIC ---
+  
+  // Base columns always shown
+  const fixedHeaders = [
+    { label: '#', key: 'index', className: 'w-12' },
+    { label: 'Registration Date', key: 'created_at', className: 'w-40' }
+  ];
+  
+  // Combine fixed and dynamic headers
+  const allHeaders = [
+    ...fixedHeaders,
+    ...columnHeaders.map(label => ({ label, key: label })) // Using label as key for dynamic fields
+  ];
+
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -124,39 +166,49 @@ function ParticipantsContent() {
           <CardHeader>
             <CardTitle>Total Registrations: {participants.length}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Registration Date</TableHead>
-                    <TableHead>Responses</TableHead>
+                    {allHeaders.map((header) => (
+                        <TableHead key={header.key} className={header.className}>
+                            {header.label}
+                        </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {participants.map((participant, index) => (
                     <TableRow key={participant.id}>
+                      {/* Fixed Columns */}
                       <TableCell>{index + 1}</TableCell>
-                      <TableCell>
-                        {new Date(participant.created_at).toLocaleString()}
+                      <TableCell className="text-sm">
+                        {format(new Date(participant.created_at), 'MMM dd, yyyy HH:mm')}
                       </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {Object.entries(participant.responses).map(
-                            ([key, value]) => (
-                              <div key={key} className="text-sm">
-                                <span className="font-semibold">{key}:</span>{' '}
-                                {typeof value === 'boolean'
-                                  ? value
-                                    ? 'Yes'
-                                    : 'No'
-                                  : value}
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </TableCell>
+
+                      {/* Dynamic Response Columns */}
+                      {columnHeaders.map((label) => {
+                          let value = participant.responses[label] || '';
+                          
+                          // Format boolean values for display
+                          if (typeof value === 'boolean') {
+                              value = value ? (
+                                  <span className="text-green-600 font-medium">Yes</span>
+                              ) : (
+                                  <span className="text-red-600">No</span>
+                              );
+                          } else if (value === '') {
+                              value = <span className="text-gray-400">-</span>;
+                          }
+
+                          return (
+                              <TableCell key={`${participant.id}-${label}`} className="text-sm">
+                                  {value}
+                              </TableCell>
+                          );
+                      })}
+                      
                     </TableRow>
                   ))}
                 </TableBody>
