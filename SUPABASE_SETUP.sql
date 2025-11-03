@@ -18,12 +18,15 @@ CREATE TABLE IF NOT EXISTS events (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create participants table
+-- IMPORTANT: DROP AND RECREATE participants TABLE for user_id and UNIQUE constraint
+DROP TABLE IF EXISTS participants CASCADE;
 CREATE TABLE IF NOT EXISTS participants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- NEW: Link to authenticated user
     responses JSONB NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (event_id, user_id) -- NEW: Enforce one registration per user per event
 );
 
 -- Create contact_submissions table
@@ -45,13 +48,22 @@ ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_submissions ENABLE ROW LEVEL SECURITY;
 
--- Drop existing policies if they exist
+-- Drop existing policies if they exist (for idempotency)
 DROP POLICY IF EXISTS "Events are viewable by everyone" ON events;
 DROP POLICY IF EXISTS "Authenticated users can manage events" ON events;
 DROP POLICY IF EXISTS "Participants can be created by anyone" ON participants;
 DROP POLICY IF EXISTS "Participants are viewable by authenticated users" ON participants;
 DROP POLICY IF EXISTS "Contact submissions can be created by anyone" ON contact_submissions;
 DROP POLICY IF EXISTS "Contact submissions are viewable by authenticated users" ON contact_submissions;
+DROP POLICY IF EXISTS "Event banners are publicly accessible" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can upload event banners" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update event banners" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete event banners" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can read their own admin status" ON admin_users;
+DROP POLICY IF EXISTS "Service role can manage all admin users" ON admin_users;
+DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can create and update their own profile" ON profiles;
+
 
 -- RLS Policies for events
 CREATE POLICY "Events are viewable by everyone"
@@ -64,9 +76,10 @@ CREATE POLICY "Authenticated users can manage events"
     WITH CHECK (auth.role() = 'authenticated');
 
 -- RLS Policies for participants
-CREATE POLICY "Participants can be created by anyone"
+-- MODIFIED: Only allow INSERT if RLS check passes (auth.uid() is required for user_id column)
+CREATE POLICY "Participants can be created by authenticated users"
     ON participants FOR INSERT
-    WITH CHECK (true);
+    WITH CHECK (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Participants are viewable by authenticated users"
     ON participants FOR SELECT
@@ -85,12 +98,6 @@ CREATE POLICY "Contact submissions are viewable by authenticated users"
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('event-banners', 'event-banners', true)
 ON CONFLICT (id) DO NOTHING;
-
--- NEW: Drop existing storage policies if they exist (to make script idempotent)
-DROP POLICY IF EXISTS "Event banners are publicly accessible" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated users can upload event banners" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated users can update event banners" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated users can delete event banners" ON storage.objects;
 
 -- Storage policies
 CREATE POLICY "Event banners are publicly accessible"
@@ -119,11 +126,6 @@ CREATE TABLE IF NOT EXISTS admin_users (
 -- Enable Row Level Security
 ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 
--- Drop existing admin_users policies if they exist
-DROP POLICY IF EXISTS "Authenticated users can read their own admin status" ON admin_users;
-DROP POLICY IF EXISTS "Service role can manage all admin users" ON admin_users;
-
-
 -- RLS Policy: Authenticated users can only see their own entry to check their role
 CREATE POLICY "Authenticated users can read their own admin status"
     ON admin_users FOR SELECT
@@ -135,7 +137,7 @@ CREATE POLICY "Service role can manage all admin users"
     USING (auth.role() = 'service_role') 
     WITH CHECK (auth.role() = 'service_role');
 
--- NEW: Add profiles table for general user data (non-admin)
+-- Add profiles table for general user data (non-admin)
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT,
@@ -144,20 +146,15 @@ CREATE TABLE IF NOT EXISTS profiles (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- NEW: Enable RLS for profiles table
+-- Enable RLS for profiles table
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- NEW: Drop existing profiles policies if they exist
-DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;
-DROP POLICY IF EXISTS "Users can create and update their own profile" ON profiles;
-
-
--- NEW: RLS Policy: Users can view their own profile
+-- RLS Policy: Users can view their own profile
 CREATE POLICY "Users can view their own profile"
     ON profiles FOR SELECT
     USING (auth.uid() = id);
 
--- NEW: RLS Policy: Users can create and update their own profile
+-- RLS Policy: Users can create and update their own profile
 CREATE POLICY "Users can create and update their own profile"
     ON profiles FOR ALL
     USING (auth.uid() = id)

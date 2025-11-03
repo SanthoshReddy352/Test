@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY // Added for scoped client
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
 
 // Helper function to extract path segments
 function getPathSegments(request) {
@@ -112,7 +112,7 @@ export async function GET(request) {
       )
     }
     
-    // NEW: GET /api/profile - Get current user profile
+    // GET /api/profile - Get current user profile
     if (segments[0] === 'profile') {
         const { user, error: authError } = await getUser(request)
         if (!user) {
@@ -144,12 +144,22 @@ export async function GET(request) {
 
 
     // GET /api/participants/:eventId - Get participants for an event
+    // MODIFIED: Supports checking a single user's registration via query param 'userId'
     if (segments[0] === 'participants' && segments[1] && segments[1] !== 'count') {
-      const { data, error } = await supabase
+      let query = supabase
         .from('participants')
         .select('*')
         .eq('event_id', segments[1])
-        .order('created_at', { ascending: false })
+        
+      if (params.userId) {
+        // If userId is present, filter by user and return single result (for frontend check)
+        query = query.eq('user_id', params.userId).maybeSingle()
+      } else {
+        // Otherwise, return all participants (for admin page)
+        query = query.order('created_at', { ascending: false })
+      }
+      
+      const { data, error } = await query
 
       if (error) {
         return NextResponse.json(
@@ -158,6 +168,15 @@ export async function GET(request) {
         )
       }
 
+      // If userId was provided, return a single object (or null) as participant
+      if (params.userId) {
+          return NextResponse.json(
+            { success: true, participant: data },
+            { headers: corsHeaders }
+          )
+      }
+
+      // Otherwise, return the list of participants
       return NextResponse.json(
         { success: true, participants: data },
         { headers: corsHeaders }
@@ -245,6 +264,7 @@ export async function POST(request) {
     if (segments[0] === 'participants' && !segments[1]) {
       const participantData = {
         event_id: body.event_id,
+        user_id: body.user_id, // NEW: Expect user_id from frontend
         responses: body.responses,
       }
 
@@ -255,6 +275,14 @@ export async function POST(request) {
         .single()
 
       if (error) {
+        // Special handling for unique constraint violation (already registered)
+        if (error.code === '23505') {
+            return NextResponse.json(
+                { success: false, error: 'User is already registered for this event.' },
+                { status: 409, headers: corsHeaders } // HTTP 409 Conflict
+            )
+        }
+        
         return NextResponse.json(
           { success: false, error: error.message },
           { status: 500, headers: corsHeaders }
@@ -313,7 +341,7 @@ export async function PUT(request) {
     const segments = getPathSegments(request)
     const body = await request.json()
     
-    // NEW: PUT /api/profile - Update current user profile
+    // PUT /api/profile - Update current user profile
     if (segments[0] === 'profile') {
         const { user, error: authError } = await getUser(request)
         if (!user) {

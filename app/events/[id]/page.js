@@ -1,24 +1,25 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter, usePathname } from 'next/navigation' // Added usePathname
+import { useParams, useRouter, usePathname } from 'next/navigation' 
 import DynamicForm from '@/components/DynamicForm'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card' 
 import { Button } from '@/components/ui/button'
 import { Calendar, Clock, ArrowLeft } from 'lucide-react'
 import { format } from 'date-fns'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase/client' // Added supabase import
+import { supabase } from '@/lib/supabase/client' 
 
 export default function EventDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const pathname = usePathname() // Get current pathname for redirect
+  const pathname = usePathname() 
   const [event, setEvent] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitted, setSubmitted] = useState(false)
   const [user, setUser] = useState(null) 
   const [authLoading, setAuthLoading] = useState(true) 
+  const [isRegistered, setIsRegistered] = useState(false) // NEW state
 
   useEffect(() => {
     if (params.id) {
@@ -40,11 +41,23 @@ export default function EventDetailPage() {
 
       // 2. Check Auth Status
       const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
+      const currentUser = session?.user ?? null;
+      setUser(currentUser)
       
-      // 3. Listen for Auth changes
+      // 3. NEW: Check Registration Status if user is logged in
+      if (currentUser && data.success) {
+          await checkRegistrationStatus(currentUser.id, params.id) // Use params.id since data.event.id is the same
+      }
+
+      // 4. Listen for Auth changes
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        setUser(session?.user ?? null)
+        const changedUser = session?.user ?? null;
+        setUser(changedUser)
+        if (changedUser && data.success) {
+            checkRegistrationStatus(changedUser.id, params.id)
+        } else {
+            setIsRegistered(false);
+        }
       })
 
       // Cleanup subscription
@@ -59,13 +72,32 @@ export default function EventDetailPage() {
       setAuthLoading(false)
     }
   }
+  
+  // NEW function: Check if the current user is registered for the event
+  const checkRegistrationStatus = async (userId, eventId) => {
+      try {
+          // Use the modified API to query for a specific participant
+          const response = await fetch(`/api/participants/${eventId}?userId=${userId}`)
+          const data = await response.json()
+          // If a participant object is returned (data.participant exists and is not null), the user is registered.
+          setIsRegistered(data.success && !!data.participant)
+      } catch (error) {
+          console.error('Error checking registration status:', error)
+          setIsRegistered(false)
+      }
+  }
 
   const handleSubmit = async (formData) => {
     // Re-check auth before final submission
     if (!user) {
         alert("You must be logged in to register for an event.")
-        // Redirect to auth page, passing the current event ID for post-login redirect
         router.push(`/auth?redirect=${params.id}`) 
+        return
+    }
+    
+    // Safety check for duplicate registration
+    if (isRegistered) {
+        alert("You are already registered for this event.")
         return
     }
     
@@ -75,6 +107,7 @@ export default function EventDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event_id: params.id,
+          user_id: user.id, // NEW: Pass the user ID for linking
           responses: formData,
         }),
       })
@@ -82,6 +115,11 @@ export default function EventDetailPage() {
       const data = await response.json()
       if (data.success) {
         setSubmitted(true)
+        setIsRegistered(true) // Update status immediately
+      } else if (response.status === 409) {
+        // Handle explicit conflict error from backend
+        alert("Registration failed: You are already registered for this event.")
+        setIsRegistered(true)
       } else {
         alert('Failed to submit registration. Please try again.')
       }
@@ -128,6 +166,46 @@ export default function EventDetailPage() {
   const registrationAvailable = event.registration_open && event.is_active;
 
   const registrationContent = () => {
+      // NEW: User is already registered
+      if (isRegistered) {
+          return (
+              <Card className="border-green-500">
+                  <CardContent className="py-12 text-center">
+                      <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg
+                          className="w-8 h-8 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      </div>
+                      <h2 className="text-2xl font-bold mb-2 text-green-600">
+                        Already Registered!
+                      </h2>
+                      <p className="text-gray-600 mb-6">
+                        You have successfully registered for **{event.title}**.
+                      </p>
+                      <div className="flex justify-center space-x-4">
+                        <Link href="/events">
+                          <Button variant="outline">Browse More Events</Button>
+                        </Link>
+                        <Link href="/">
+                          <Button className="bg-[#00629B] hover:bg-[#004d7a]">Go Home</Button>
+                        </Link>
+                      </div>
+                  </CardContent>
+              </Card>
+          )
+      }
+
+
       if (!registrationAvailable) {
           return (
               <Card>
