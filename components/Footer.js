@@ -70,8 +70,8 @@ export default function Footer() {
                   <Mail size={16} />
                   <span>kareieeewiesba@gmail.com</span>
                 </li>
-                <li>KL University</li>
-                <li>Vijayawada, Andhra Pradesh</li>
+                <li>Kalasalingam University</li>
+                <li>Srivilliputtur, Tamil Nadu</li>
               </ul>
             </div>
           )}

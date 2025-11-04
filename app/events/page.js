@@ -24,7 +24,8 @@ export default function EventsPage() {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch('/api/events')
+      // Ensure we always get the latest events and don't use a cached list
+      const response = await fetch('/api/events', { cache: 'no-store' })
       const data = await response.json()
       if (data.success) {
         setEvents(data.events)

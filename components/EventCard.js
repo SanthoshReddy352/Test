@@ -11,27 +11,27 @@ import { formatInTimeZone } from 'date-fns-tz';
 const formatEventDate = (start, end, timeZone) => {
   if (!start) return 'Date TBA';
   
+  // Get the timezone abbreviation (e.g., "GMT+5:30") once
+  const tz = formatInTimeZone(start, timeZone, 'zzz');
+  
   const startDate = formatInTimeZone(start, timeZone, 'MMM dd');
-  // MODIFIED: 'zzz' is now inside the format string
-  const startTime = formatInTimeZone(start, timeZone, 'hh:mm a zzz'); 
+  const startTime = formatInTimeZone(start, timeZone, 'hh:mm a'); // No zzz
   
   if (!end) {
     // Single-day event without end time
-    return `${startDate} at ${startTime}`;
+    return `${startDate} at ${startTime} ${tz}`; // Append tz
   }
 
   const endDate = formatInTimeZone(end, timeZone, 'MMM dd');
-  // MODIFIED: 'zzz' is now inside the format string
-  const endTime = formatInTimeZone(end, timeZone, 'hh:mm a zzz');
+  const endTime = formatInTimeZone(end, timeZone, 'hh:mm a'); // No zzz
 
   if (startDate === endDate) {
     // Single-day event
-    // MODIFIED: Removed one of the 'zzz' tokens for cleanliness
-    return `${startDate} · ${formatInTimeZone(start, timeZone, 'hh:mm a')} - ${endTime}`;
+    return `${startDate} · ${startTime} - ${endTime} ${tz}`; // Append tz
   }
   
-  // Multi-day event
-  return `${startDate}, ${startTime} - ${endDate}, ${endTime}`;
+  // Multi-day event (REMOVED COMMA and consolidated zzz)
+  return `${startDate} ${startTime} - ${endDate} ${endTime} ${tz}`;
 }
 
 // Helper function to get event status
