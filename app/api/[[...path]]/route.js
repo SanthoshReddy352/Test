@@ -68,7 +68,11 @@ export async function GET(request) {
 
       // Filter by active status
       if (params.active === 'true') {
-        query = query.eq('is_active', true)
+        const now = new Date().toISOString();
+        query = query
+          .eq('is_active', true) // Must be admin-visible
+          // And event end date is in the future, OR it has no end date (so it's not completed)
+          .or(`event_end_date.gt.${now},event_end_date.is.null`)
       }
 
       // Limit results

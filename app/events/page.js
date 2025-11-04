@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Search } from 'lucide-react'
+import { parseISO } from 'date-fns' // Import parseISO
 
 export default function EventsPage() {
   const [events, setEvents] = useState([])
@@ -51,7 +52,14 @@ export default function EventsPage() {
 
     // Filter by status
     if (filter === 'active') {
-      filtered = filtered.filter(event => event.is_active)
+      const now = new Date();
+      filtered = filtered.filter(event => {
+        const eventEndDate = event.event_end_date ? parseISO(event.event_end_date) : null;
+        const isCompleted = eventEndDate && now > eventEndDate;
+        
+        // Active = NOT completed AND admin has set is_active to true
+        return !isCompleted && event.is_active;
+      })
     } else if (filter === 'open') {
       filtered = filtered.filter(event => event.registration_open)
     }
