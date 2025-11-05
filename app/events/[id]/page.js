@@ -400,20 +400,23 @@ export default function EventDetailPage() {
       // 5. Successfully submitted in current session
       if (submitted) {
           return (
-              <Card className="border-green-500">
+              <Card className="border-orange-500" data-testid="registration-success-card">
                   <CardContent className="py-12 text-center">
-                      <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle className="w-8 h-8 text-white" />
+                      <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FileClock className="w-8 h-8 text-white" />
                       </div>
-                      <h2 className="text-2xl font-bold mb-2 text-green-600">
-                        Registration Successful!
+                      <h2 className="text-2xl font-bold mb-2 text-orange-600">
+                        Registration Submitted Successfully!
                       </h2>
+                      <p className="text-gray-600 mb-2">
+                        Thank you for registering for <strong>{event.title}</strong>.
+                      </p>
                       <p className="text-gray-600 mb-6">
-                        Thank you for registering for {event.title}. We'll contact you with more details soon.
+                        Your registration is now pending approval from the event organizers. You'll receive an email notification once it's reviewed.
                       </p>
                       <div className="flex justify-center space-x-4">
                         <Link href="/events">
-                          <Button variant="outline">Browse More Events</Button>
+                          <Button variant="outline" data-testid="browse-more-events-button">Browse More Events</Button>
                         </Link>
                       </div>
                   </CardContent>
