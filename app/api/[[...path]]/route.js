@@ -435,7 +435,38 @@ export async function POST(request) {
         )
       }
 
-      // TODO: Send email notification to event admin about new registration
+      // Send email notification to event admin about new registration
+      try {
+        // Get event details
+        const { data: eventData } = await supabase
+          .from('events')
+          .select('title, event_date, created_by')
+          .eq('id', body.event_id)
+          .single()
+        
+        if (eventData && eventData.created_by) {
+          // Get admin email
+          const { data: { user: adminUser } } = await supabase.auth.admin.getUserById(eventData.created_by)
+          
+          if (adminUser?.email) {
+            const participantName = body.responses?.['Name'] || body.responses?.['Full Name'] || body.responses?.['name'] || 'Participant'
+            const participantEmail = body.responses?.['Email'] || body.responses?.['email'] || 'N/A'
+            
+            // Import and send email
+            const { sendAdminNotification } = await import('@/lib/email')
+            await sendAdminNotification({
+              to: adminUser.email,
+              adminName: adminUser.user_metadata?.name || adminUser.email,
+              eventTitle: eventData.title,
+              participantName,
+              participantEmail
+            })
+          }
+        }
+      } catch (emailError) {
+        console.error('Error sending admin notification email:', emailError)
+        // Don't fail the registration if email fails
+      }
       
       return NextResponse.json(
         { success: true, participant: data },
