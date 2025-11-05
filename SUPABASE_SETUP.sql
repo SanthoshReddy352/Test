@@ -256,6 +256,45 @@ CREATE POLICY "Admins can update event banners"
 -- MODIFIED: Only admins can delete
 CREATE POLICY "Admins can delete event banners"
     ON storage.objects FOR DELETE
+
+
+-- ====================================================================
+-- MIGRATION COMMANDS (For existing databases)
+-- ====================================================================
+-- If you already have a database running and want to add the new approval workflow,
+-- run these commands instead of dropping and recreating everything:
+
+/*
+-- Add new columns to participants table
+ALTER TABLE participants 
+ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending',
+ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE;
+
+-- Add constraint for status
+ALTER TABLE participants 
+ADD CONSTRAINT participant_status_check CHECK (status IN ('pending', 'approved', 'rejected'));
+
+-- Add new indexes
+CREATE INDEX IF NOT EXISTS idx_participants_status ON participants(status);
+CREATE INDEX IF NOT EXISTS idx_participants_reviewed_by ON participants(reviewed_by);
+
+-- Update existing participants to 'approved' status (so they're not stuck in pending)
+UPDATE participants SET status = 'approved' WHERE status = 'pending';
+
+-- Add new RLS policy for admin updates
+DROP POLICY IF EXISTS "Admins can update participants for events they own (or if super admin)" ON participants;
+CREATE POLICY "Admins can update participants for events they own (or if super admin)"
+    ON participants FOR UPDATE
+    USING (
+        (public.get_admin_role() = 'super_admin') OR
+        (EXISTS (
+            SELECT 1 FROM events
+            WHERE events.id = participants.event_id AND events.created_by = auth.uid()
+        ))
+    );
+*/
+
     USING (bucket_id = 'event-banners' AND public.get_admin_role() IS NOT NULL);
 
 
