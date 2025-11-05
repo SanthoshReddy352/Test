@@ -7,44 +7,80 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Calendar, Users, FileText, LogOut } from 'lucide-react'
+import { Calendar, Users, FileText, LogOut, AlertCircle, TrendingUp } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
 function AdminDashboardContent() {
   const router = useRouter()
-  const [user, setUser] = useState(null)
+  const { user, isSuperAdmin } = useAuth()
   const [stats, setStats] = useState({
     totalEvents: 0,
     activeEvents: 0,
     totalParticipants: 0,
+    pendingApprovals: 0,
+    myEvents: 0, // For normal admins
   })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchUserAndStats()
-  }, [])
+    if (user) {
+      fetchUserAndStats()
+    }
+  }, [user, isSuperAdmin])
 
   const fetchUserAndStats = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    setUser(user)
-
-    // Fetch stats
+    setLoading(true)
     try {
-      const [eventsRes, participantsRes] = await Promise.all([
-        fetch('/api/events'),
-        fetch('/api/participants/count'),
-      ])
-
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      // Fetch events
+      const eventsRes = await fetch('/api/events')
       const eventsData = await eventsRes.json()
-      const participantsData = await participantsRes.json()
 
       if (eventsData.success) {
+        const allEvents = eventsData.events
+        
+        // Filter events based on role
+        const myEvents = isSuperAdmin 
+          ? allEvents 
+          : allEvents.filter(e => e.created_by === user.id)
+        
+        const myEventIds = myEvents.map(e => e.id)
+        
+        // Fetch participants for my events only
+        let totalParticipants = 0
+        let pendingApprovals = 0
+        
+        if (myEventIds.length > 0) {
+          // Fetch all participants for my events
+          const participantPromises = myEventIds.map(eventId =>
+            fetch(`/api/participants/${eventId}`, {
+              headers: { 'Authorization': `Bearer ${session.access_token}` }
+            }).then(res => res.json())
+          )
+          
+          const participantResults = await Promise.all(participantPromises)
+          
+          participantResults.forEach(result => {
+            if (result.success && result.participants) {
+              totalParticipants += result.participants.length
+              pendingApprovals += result.participants.filter(p => p.status === 'pending').length
+            }
+          })
+        }
+
         setStats({
-          totalEvents: eventsData.events.length,
-          activeEvents: eventsData.events.filter(e => e.is_active).length,
-          totalParticipants: participantsData.count || 0,
+          totalEvents: allEvents.length,
+          activeEvents: myEvents.filter(e => e.is_active).length,
+          totalParticipants,
+          pendingApprovals,
+          myEvents: myEvents.length,
         })
       }
     } catch (error) {
       console.error('Error fetching stats:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
