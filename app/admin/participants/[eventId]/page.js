@@ -46,8 +46,7 @@ function ParticipantsContent() {
       const participantsData = await participantsRes.json()
       
       let fields = [];
-      let transformedParticipants = [];
-
+      
       if (eventData.success && eventData.event) {
           setEvent(eventData.event)
           fields = eventData.event.form_fields || []
@@ -62,29 +61,15 @@ function ParticipantsContent() {
           return; 
       }
 
+      // --- START OF FIX ---
+      // Set participants directly, no transformation needed
       if (participantsData.success && participantsData.participants) {
-          transformedParticipants = participantsData.participants
+          setParticipants(participantsData.participants)
       }
       
-      const fieldIdToLabelMap = new Map();
-      fields.forEach(f => {
-          fieldIdToLabelMap.set(f.label, f.label);
-          fieldIdToLabelMap.set(f.id, f.label);
-      });
-
-      const finalParticipants = transformedParticipants.map(p => {
-          const transformedResponses = {};
-          if (p.responses) { // Add check for null responses
-              for (const [key, value] of Object.entries(p.responses)) {
-                  const label = fieldIdToLabelMap.get(key) || key;
-                  transformedResponses[label] = value;
-              }
-          }
-          return { ...p, responses: transformedResponses };
-      });
-      
-      setParticipants(finalParticipants)
-      setDynamicFields(fields.map(f => ({ label: f.label, id: f.id }))); // MODIFIED: Pass ID too
+      // Set dynamic fields using both label (for header) and id (for lookup)
+      setDynamicFields(fields.map(f => ({ label: f.label, id: f.id })));
+      // --- END OF FIX ---
 
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -93,15 +78,25 @@ function ParticipantsContent() {
     }
   }
 
+  // --- START OF FIX ---
+  // Updated function to get response value
+  // It checks by field.id first (new way), then falls back to field.label (old way)
   const getParticipantResponseValue = (participant, field) => {
-      let value = participant.responses[field.label];
+      if (!participant.responses) {
+        return undefined; // or null or ''
+      }
       
-      if ((value === undefined || value === null) && field.id) {
-           value = participant.responses[field.id];
+      // New data is stored by ID
+      let value = participant.responses[field.id];
+      
+      // Fallback for old data that might have been stored by Label
+      if (value === undefined) {
+           value = participant.responses[field.label];
       }
       
       return value;
   };
+  // --- END OF FIX ---
 
   const exportToCSV = () => {
     if (participants.length === 0) {
@@ -118,6 +113,7 @@ function ParticipantsContent() {
       ]
       
       dynamicFields.forEach((field) => {
+        // Use the updated getter function
         let value = getParticipantResponseValue(p, field) || '';
         
         if (typeof value === 'boolean') {
@@ -185,7 +181,7 @@ function ParticipantsContent() {
   
   const allHeaders = [
     ...fixedHeaders,
-    ...dynamicFields
+    ...dynamicFields // This now contains { label: '...', id: '...' }
   ];
 
 
@@ -248,6 +244,7 @@ function ParticipantsContent() {
                       </TableCell>
 
                       {dynamicFields.map((field) => {
+                          // Use the updated getter function
                           let value = getParticipantResponseValue(participant, field);
                           
                           if (typeof value === 'boolean') {
@@ -261,7 +258,8 @@ function ParticipantsContent() {
                           }
 
                           return (
-                              <TableCell key={`${participant.id}-${field.label}`} className="text-sm">
+                              // Use field.id for a stable key
+                              <TableCell key={`${participant.id}-${field.id}`} className="text-sm">
                                   {value}
                               </TableCell>
                           );

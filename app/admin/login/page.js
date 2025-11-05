@@ -38,14 +38,16 @@ export default function AdminLoginPage() {
         .eq('user_id', user.id)
         .maybeSingle() 
 
+      // --- START OF FIX ---
+      // Simplified error handling
+      if (adminError) {
+          throw adminError; 
+      }
+      // --- END OF FIX ---
+
       // MODIFIED: Check if role is 'admin' or 'super_admin'
       const userRole = adminData?.role;
       const isAdmin = userRole === 'admin' || userRole === 'super_admin';
-      
-      if (adminError && adminError.message !== 'Policy violation' && !adminData) {
-          // If we can't check the admin status for some other DB error
-          throw adminError; 
-      }
       
       if (isAdmin) {
           router.push('/admin')

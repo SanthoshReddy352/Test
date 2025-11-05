@@ -14,23 +14,28 @@ export default function DynamicForm({ fields = [], onSubmit, eventId }) {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleInputChange = (fieldLabel, value) => {
-    // FIX: Use fieldLabel directly as the key for storing data
-    setFormData({ ...formData, [fieldLabel]: value })
+  const handleInputChange = (fieldId, value) => {
+    // --- START OF FIX ---
+    // Use fieldId (UUID) as the key
+    setFormData({ ...formData, [fieldId]: value })
     // Clear error when user starts typing
-    if (errors[fieldLabel]) {
-      setErrors({ ...errors, [fieldLabel]: null })
+    if (errors[fieldId]) {
+      setErrors({ ...errors, [fieldId]: null })
     }
+    // --- END OF FIX ---
   }
 
   const validateForm = () => {
     const newErrors = {}
     fields.forEach((field) => {
-      // Use the field.label consistently for error tracking
-      const fieldKey = field.label; 
+      // --- START OF FIX ---
+      // Use field.id consistently for error tracking
+      const fieldKey = field.id; 
       if (field.required && !formData[fieldKey]) {
+        // Use field.label for the error message
         newErrors[fieldKey] = `${field.label} is required`
       }
+      // --- END OF FIX ---
     })
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -54,9 +59,11 @@ export default function DynamicForm({ fields = [], onSubmit, eventId }) {
   }
 
   const renderField = (field) => {
-    // FIX: Use field.label as the unique identifier for the form elements
-    const fieldId = field.label 
+    // --- START OF FIX ---
+    // Use field.id as the unique identifier
+    const fieldId = field.id 
     const value = formData[fieldId] || ''
+    // --- END OF FIX ---
 
     switch (field.type) {
       case 'text':
@@ -73,7 +80,7 @@ export default function DynamicForm({ fields = [], onSubmit, eventId }) {
               id={fieldId}
               type={field.type}
               value={value}
-              onChange={(e) => handleInputChange(field.label, e.target.value)}
+              onChange={(e) => handleInputChange(field.id, e.target.value)} // Pass field.id
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
               required={field.required}
             />
@@ -93,7 +100,7 @@ export default function DynamicForm({ fields = [], onSubmit, eventId }) {
             <Textarea
               id={fieldId}
               value={value}
-              onChange={(e) => handleInputChange(field.label, e.target.value)}
+              onChange={(e) => handleInputChange(field.id, e.target.value)} // Pass field.id
               placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
               required={field.required}
               rows={4}
@@ -113,7 +120,7 @@ export default function DynamicForm({ fields = [], onSubmit, eventId }) {
             </Label>
             <Select
               value={value}
-              onValueChange={(val) => handleInputChange(field.label, val)}
+              onValueChange={(val) => handleInputChange(field.id, val)} // Pass field.id
             >
               <SelectTrigger>
                 <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
@@ -138,7 +145,7 @@ export default function DynamicForm({ fields = [], onSubmit, eventId }) {
             <Checkbox
               id={fieldId}
               checked={value === true}
-              onCheckedChange={(checked) => handleInputChange(field.label, checked)}
+              onCheckedChange={(checked) => handleInputChange(field.id, checked)} // Pass field.id
             />
             <Label htmlFor={fieldId} className="font-normal">
               {field.label}
@@ -158,7 +165,7 @@ export default function DynamicForm({ fields = [], onSubmit, eventId }) {
               id={fieldId}
               type="date"
               value={value}
-              onChange={(e) => handleInputChange(field.label, e.target.value)}
+              onChange={(e) => handleInputChange(field.id, e.target.value)} // Pass field.id
               required={field.required}
             />
             {errors[fieldId] && (
