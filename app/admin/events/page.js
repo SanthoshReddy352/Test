@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Edit, Trash2, Users, FileEdit } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAuth } from '@/context/AuthContext' // MODIFIED: Import useAuth
+import { supabase } from '@/lib/supabase/client' // FIX: Import supabase
 
 function AdminEventsContent() {
   const router = useRouter()
