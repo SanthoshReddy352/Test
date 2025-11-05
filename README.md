@@ -7,20 +7,39 @@ A modern, full-featured website for managing IEEE Club hackathons and tech event
 ### For Participants
 - 📅 Browse upcoming hackathons and events
 - 📝 Register with custom dynamic forms per event
+- 🔔 **Registration Status Tracking** - View approval status (Pending/Approved/Rejected)
+- 📧 Email notifications for registration approval/rejection
 - 💬 Contact form to reach organizers
 - 📱 Fully responsive design
 
 ### For Admins
 - 🔐 Secure authentication (Supabase Auth)
-- ✏️ Create/Edit/Delete events
+- 👥 **Role-based Access Control** - Admin vs Super Admin permissions
+- ✏️ Create/Edit/Delete events (own events only for Admins)
 - 🎨 **Dynamic Form Builder** - Create custom registration forms per event
   - Support for: text, email, number, URL, dropdown, checkbox, textarea, date fields
   - Field validation (required/optional)
   - Forms stored as JSON schema
-- 📊 View all participants with filtering
+- ✅ **Registration Approval Workflow**
+  - Review pending registrations
+  - Approve or reject applications
+  - Track approval history
+- 📊 **Enhanced Dashboard** - Role-specific analytics
+  - My Events count
+  - Pending approvals alert
+  - Total registrations
+  - Active events tracking
+- 📧 **Email Notifications** - Automated emails for:
+  - Admin notification on new registration
+  - Participant approval/rejection
 - 📥 Export participant data to CSV
 - 🖼️ Upload event banners (Supabase Storage) or use URLs
 - ⚡ Toggle event visibility and registration status
+
+### For Super Admins
+- 🔓 Full system access - manage ALL events
+- 👁️ View and approve registrations for any event
+- 📊 System-wide analytics and oversight
 
 ## 🛠️ Tech Stack
 
