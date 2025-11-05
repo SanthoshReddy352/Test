@@ -41,14 +41,17 @@ CREATE TABLE IF NOT EXISTS events (
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
 );
 
--- Create participants table (Recreated to include user_id and UNIQUE constraint)
+-- Create participants table (Recreated to include user_id and approval workflow)
 CREATE TABLE IF NOT EXISTS participants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID REFERENCES events(id) ON DELETE CASCADE,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Link to authenticated user
     responses JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+    reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL, -- Admin who reviewed
+    reviewed_at TIMESTAMP WITH TIME ZONE, -- When it was reviewed
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE (event_id, user_id) -- Enforce one registration per user per event
+    CONSTRAINT participant_status_check CHECK (status IN ('pending', 'approved', 'rejected'))
 );
 
 -- Create contact_submissions table
