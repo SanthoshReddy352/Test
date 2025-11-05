@@ -2,432 +2,541 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import ProtectedRoute from '@/components/ProtectedRoute'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import DynamicForm from '@/components/DynamicForm'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card' 
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Upload, Link as LinkIcon, ShieldAlert } from 'lucide-react'
-import { useDropzone } from 'react-dropzone'
-import { supabase } from '@/lib/supabase/client'
-import { useAuth } from '@/context/AuthContext' // MODIFIED: Import useAuth
+import { Calendar, Clock, ArrowLeft, Loader2, FileClock, XCircle, CheckCircle } from 'lucide-react'
+import { parseISO } from 'date-fns'; 
+import { formatInTimeZone } from 'date-fns-tz'; 
+import Link from 'next/link'
+import { supabase } from '@/lib/supabase/client' 
+import { useAuth } from '@/context/AuthContext' 
 
-// Helper to convert ISO string (from DB) to local datetime-local format
-const toDateTimeLocal = (isoString) => {
-  if (!isoString) return '';
-  try {
-    const date = new Date(isoString);
-    const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-    return localDate.toISOString().slice(0, 16);
-  } catch {
-    return '';
+// Helper function to format date ranges
+const formatEventDate = (start, end, timeZone) => {
+  if (!start) return { date: 'Date TBA', time: null };
+  
+  const startDate = formatInTimeZone(start, timeZone, 'MMMM dd, yyyy');
+  // MODIFIED: 'zzz' is now inside the format string
+  const startTime = formatInTimeZone(start, timeZone, 'hh:mm a zzz'); 
+  
+  if (!end) {
+    return { date: startDate, time: startTime };
   }
+
+  const endDate = formatInTimeZone(end, timeZone, 'MMMM dd, yyyy');
+  // MODIFIED: 'zzz' is now inside the format string
+  const endTime = formatInTimeZone(end, timeZone, 'hh:mm a zzz');
+
+  if (startDate === endDate) {
+    // MODIFIED: Use start time without zzz for cleaner range
+    return { date: startDate, time: `${formatInTimeZone(start, timeZone, 'hh:mm a')} - ${endTime}` }; 
+  }
+  
+  return { 
+    date: `${startDate} - ${endDate}`,
+    time: `${startTime} - ${endTime}`
+  };
 }
 
-// Helper to convert datetime-local string (from input) back to ISO format (UTC)
-const toISOString = (dateTimeLocalString) => {
-    if (!dateTimeLocalString) return null;
-    return new Date(dateTimeLocalString).toISOString();
+// Helper function to format registration dates
+const formatRegDate = (date, timeZone) => {
+  if (!date) return 'Not specified';
+  // MODIFIED: 'zzz' is now inside the format string
+  return formatInTimeZone(date, timeZone, 'MMM dd, yyyy · hh:mm a zzz'); 
 }
 
-// MODIFIED: Renamed component
-function EditEventContent() {
+export default function EventDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const [event, setEvent] = useState(null) // MODIFIED: Store full event object
-  const [loading, setLoading] = useState(true)
-  const [found, setFound] = useState(false) 
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    event_date: '',
-    event_end_date: '',
-    is_active: true,
-    registration_open: true,
-    registration_start: '',
-    registration_end: '',
-    banner_url: '',
-  })
-  const [bannerMode, setBannerMode] = useState('url')
-  const [bannerUrl, setBannerUrl] = useState('')
-  const [bannerFile, setBannerFile] = useState(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [event, setEvent] = useState(null)
+  const [loading, setLoading] = useState(true) // For event data fetch
+  const [submitted, setSubmitted] = useState(false)
   
-  // MODIFIED: Get auth state
-  const { user, isSuperAdmin, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth() 
+  
+  const [isRegistered, setIsRegistered] = useState(false) 
+  const [registrationStatus, setRegistrationStatus] = useState(null) // 'pending', 'approved', 'rejected'
+  const [regCheckLoading, setRegCheckLoading] = useState(true) 
 
-  const fetchEvent = useCallback(async () => {
-    if (!params.id) return;
-    try {
-      const response = await fetch(`/api/events/${params.id}`)
-      const data = await response.json()
-      if (data.success) {
-        const event = data.event
-        setEvent(event) // MODIFIED: Store full event
-        
-        setFormData({
-          title: event.title,
-          description: event.description || '',
-          event_date: toDateTimeLocal(event.event_date),
-          event_end_date: toDateTimeLocal(event.event_end_date),
-          is_active: event.is_active,
-          registration_open: event.registration_open,
-          registration_start: toDateTimeLocal(event.registration_start), 
-          registration_end: toDateTimeLocal(event.registration_end),     
-          banner_url: event.banner_url || '',
-        })
-        setBannerUrl(event.banner_url || '')
-        setFound(true)
-      } else {
-        setFound(false)
+  const checkRegistrationStatus = useCallback(async (userId, eventId) => {
+      if (!userId || !eventId) {
+          setIsRegistered(false)
+          setRegistrationStatus(null)
+          setRegCheckLoading(false)
+          return
       }
-    } catch (error) {
-      console.error('Error fetching event:', error)
-      setFound(false)
-    } finally {
-      setLoading(false)
-    }
-  }, [params.id])
+      setRegCheckLoading(true)
+      try {
+          // --- START OF FIX: Safely get session ---
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+          if (sessionError) throw sessionError;
+          // --- END OF FIX ---
 
-  useEffect(() => {
-    if (params.id) {
-      fetchEvent()
-    }
-  }, [params.id, fetchEvent])
-
-  const onDrop = useCallback((acceptedFiles) => {
-    if (acceptedFiles.length > 0) {
-      setBannerFile(acceptedFiles[0])
-    }
+          const response = await fetch(`/api/participants/${eventId}?userId=${userId}`, {
+            headers: session ? { 'Authorization': `Bearer ${session.access_token}` } : {}
+          })
+          const data = await response.json()
+          
+          if (data.success && data.participant) {
+            setIsRegistered(true)
+            setRegistrationStatus(data.participant.status)
+          } else {
+            setIsRegistered(false)
+            setRegistrationStatus(null)
+          }
+      } catch (error) {
+          console.error('Error checking registration status:', error)
+          setIsRegistered(false)
+          setRegistrationStatus(null)
+      } finally {
+          setRegCheckLoading(false)
+      }
   }, [])
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { 'image/*': [] },
-    maxFiles: 1,
-  })
+  useEffect(() => {
+    const fetchEventData = async () => {
+        if (!params.id) return;
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/events/${params.id}`);
+            const data = await response.json();
+            if (data.success) {
+                setEvent(data.event);
+            } else {
+                setEvent(null);
+            }
+        } catch (error) {
+            console.error('Error fetching event:', error);
+            setEvent(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchEventData();
+  }, [params.id]);
 
-  const uploadBanner = async () => {
-    if (!bannerFile) return null
+  useEffect(() => {
+    if (loading || authLoading || !event) return; 
 
-    const fileExt = bannerFile.name.split('.').pop()
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-    const filePath = `${fileName}`
-
-    const { data, error } = await supabase.storage
-      .from('event-banners')
-      .upload(filePath, bannerFile)
-
-    if (error) {
-      console.error('Upload error:', error)
-      throw error
+    if (user) {
+        checkRegistrationStatus(user.id, event.id);
+    } else {
+        setIsRegistered(false);
+        setRegCheckLoading(false);
     }
+  }, [user, event, loading, authLoading, checkRegistrationStatus]); 
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('event-banners')
-      .getPublicUrl(filePath)
-
-    return publicUrl
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
+  const handleSubmit = async (formData) => {
+    if (!user) {
+        alert("Authentication failed. Please log in again.")
+        router.push(`/auth?redirect=${params.id}`) 
+        return
+    }
+    
+    if (isRegistered) {
+        alert("You are already registered for this event.")
+        return
+    }
+    
+    if (!user.id) {
+        alert("Error: Missing user ID. Please log in again.")
+        router.push(`/auth?redirect=${params.id}`)
+        return;
+    }
+    
     try {
-      let finalBannerUrl = formData.banner_url
-
-      if (bannerMode === 'upload' && bannerFile) {
-        finalBannerUrl = await uploadBanner()
-      } else if (bannerMode === 'url') {
-        finalBannerUrl = bannerUrl
-      }
-
-      const eventData = {
-        ...formData,
-        banner_url: finalBannerUrl,
-        event_date: toISOString(formData.event_date),
-        event_end_date: toISOString(formData.event_end_date),
-        registration_start: toISOString(formData.registration_start),
-        registration_end: toISOString(formData.registration_end),
-      }
-      
-      // --- START OF FIX ---
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // --- START OF FIX: Safely get session before submit ---
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       if (sessionError || !session) {
         alert('Authentication error. Please log in again.');
-        setIsSubmitting(false); // Make sure to stop loading
-        return; // Exit the function
+        return;
       }
       // --- END OF FIX ---
 
-      const response = await fetch(`/api/events/${params.id}`, {
-        method: 'PUT',
+      const response = await fetch('/api/participants', {
+        method: 'POST',
         headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}` // Pass token
         },
-        body: JSON.stringify(eventData),
+        body: JSON.stringify({
+          event_id: params.id,
+          user_id: user.id, 
+          responses: formData,
+        }),
       })
 
       const data = await response.json()
       if (data.success) {
-        alert('Event updated successfully!')
-        router.push('/admin/events')
+        setSubmitted(true)
+        setIsRegistered(true)
+        setRegistrationStatus('pending') // New registrations are pending by default
+      } else if (response.status === 409) {
+        alert("Registration failed: You are already registered for this event.")
+        setIsRegistered(true)
       } else {
-        alert(`Failed to update event: ${data.error}`) 
-        console.error('API Error:', data.error);
+        alert('Failed to submit registration. Please try again.')
       }
     } catch (error) {
-      console.error('Error updating event:', error)
-      alert('An error occurred')
-    } finally {
-      setIsSubmitting(false)
+      console.error('Error submitting form:', error)
+      alert('An error occurred. Please try again.')
     }
   }
 
-  // MODIFIED: Include authLoading in check
-  if (loading || authLoading) {
-    return (
-      <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#00629B]"></div>
-      </div>
-    )
+  if (loading || !event) {
+     return (
+        <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#00629B]"></div>
+              <p className="mt-4 text-gray-600">Loading event...</p>
+            </div>
+        </div>
+     )
+  }
+
+  // --- NEW AUTOMATED STATUS LOGIC ---
+  const TIME_ZONE = 'Asia/Kolkata';
+  const now = new Date();
+  
+  const eventStartDate = event.event_date ? parseISO(event.event_date) : null;
+  const eventEndDate = event.event_end_date ? parseISO(event.event_end_date) : null;
+  const regStartDate = event.registration_start ? parseISO(event.registration_start) : null;
+  const regEndDate = event.registration_end ? parseISO(event.registration_end) : null;
+
+  const { date: formattedDate, time: formattedTime } = formatEventDate(eventStartDate, eventEndDate, TIME_ZONE);
+  const formattedRegStart = formatRegDate(regStartDate, TIME_ZONE);
+  const formattedRegEnd = formatRegDate(regEndDate, TIME_ZONE);
+  
+  // Determine event status
+  const isCompleted = eventEndDate && now > eventEndDate;
+  const isRegNotYetOpen = regStartDate && now < regStartDate;
+  
+  // Registration is available ONLY if all these conditions are met
+  const isRegistrationAvailable = 
+    event.is_active &&
+    event.registration_open &&
+    regStartDate && 
+    regEndDate &&
+    now >= regStartDate &&
+    now < regEndDate;
+
+  // Derive the display status
+  let statusBadge;
+  if (isCompleted) {
+    statusBadge = <span className="bg-gray-500 text-white text-sm px-4 py-1 rounded-full">Completed</span>;
+  } else if (isRegistrationAvailable) {
+    statusBadge = <span className="bg-green-500 text-white text-sm px-4 py-1 rounded-full">Registration Open</span>;
+  } else {
+    statusBadge = <span className="bg-red-500 text-white text-sm px-4 py-1 rounded-full">Registration Closed</span>;
   }
   
-  if (!found) {
-    return (
-        <div className="container mx-auto px-4 py-12 max-w-3xl">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-red-600">Error</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-lg">Event not found or an error occurred while loading. Please check the event ID.</p>
-                    <Button onClick={() => router.push('/admin/events')} className="mt-4">
-                        Go Back to Events List
-                    </Button>
-                </CardContent>
-            </Card>
-        </div>
-    )
+  // --- END OF STATUS LOGIC ---
+
+  const registrationContent = () => {
+      // Show loaders if auth or registration status is still checking
+      if (authLoading || regCheckLoading) {
+          return (
+              <Card>
+                  <CardContent className="py-12 text-center">
+                      <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#00629B]" />
+                      <p className="mt-4 text-gray-600">Checking registration status...</p>
+                  </CardContent>
+              </Card>
+          )
+      }
+      
+      // 1. Event is Completed
+      if (isCompleted) {
+           return (
+              <Card>
+                  <CardContent className="py-12 text-center text-gray-500">
+                      <CheckCircle size={48} className="mx-auto mb-4 text-gray-400" />
+                      <p className="text-lg font-semibold mb-2">Event Completed</p>
+                      <p>This event has already finished.</p>
+                  </CardContent>
+              </Card>
+          )
+      }
+
+      // 2. Already Registered - Show status-specific messages
+      if (isRegistered) {
+          if (registrationStatus === 'pending') {
+            return (
+                <Card className="border-orange-500" data-testid="registration-pending-card">
+                    <CardContent className="py-12 text-center">
+                        <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <FileClock className="w-8 h-8 text-white" />
+                        </div>
+                        <h2 className="text-2xl font-bold mb-2 text-orange-600">
+                          Registration Under Review
+                        </h2>
+                        <p className="text-gray-600 mb-2">
+                          Your registration for <strong>{event.title}</strong> has been submitted successfully.
+                        </p>
+                        <p className="text-gray-600 mb-6">
+                          The event organizers are reviewing your application. You'll be notified via email once it's reviewed.
+                        </p>
+                        <div className="flex justify-center space-x-4">
+                          <Link href="/events">
+                            <Button variant="outline" data-testid="browse-more-events-button">Browse More Events</Button>
+                          </Link>
+                        </div>
+                    </CardContent>
+                </Card>
+            )
+          } else if (registrationStatus === 'approved') {
+            return (
+                <Card className="border-green-500" data-testid="registration-approved-card">
+                    <CardContent className="py-12 text-center">
+                        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <CheckCircle className="w-8 h-8 text-white" />
+                        </div>
+                        <h2 className="text-2xl font-bold mb-2 text-green-600">
+                          Registration Approved! 🎉
+                        </h2>
+                        <p className="text-gray-600 mb-6">
+                          Your registration for <strong>{event.title}</strong> has been approved. We're excited to have you join us!
+                        </p>
+                        <div className="flex justify-center space-x-4">
+                          <Link href="/events">
+                            <Button variant="outline" data-testid="browse-more-events-button">Browse More Events</Button>
+                          </Link>
+                        </div>
+                    </CardContent>
+                </Card>
+            )
+          } else if (registrationStatus === 'rejected') {
+            return (
+                <Card className="border-red-500" data-testid="registration-rejected-card">
+                    <CardContent className="py-12 text-center">
+                        <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <XCircle className="w-8 h-8 text-white" />
+                        </div>
+                        <h2 className="text-2xl font-bold mb-2 text-red-600">
+                          Registration Not Approved
+                        </h2>
+                        <p className="text-gray-600 mb-2">
+                          Unfortunately, your registration for <strong>{event.title}</strong> was not approved.
+                        </p>
+                        <p className="text-gray-600 mb-6">
+                          You are welcome to register again or browse other events.
+                        </p>
+                        <div className="flex justify-center space-x-4">
+                          <Button 
+                            onClick={() => {
+                              setIsRegistered(false)
+                              setRegistrationStatus(null)
+                            }}
+                            className="bg-[#00629B] hover:bg-[#004d7a]"
+                            data-testid="register-again-button"
+                          >
+                            Register Again
+                          </Button>
+                          <Link href="/events">
+                            <Button variant="outline" data-testid="browse-more-events-button">Browse More Events</Button>
+                          </Link>
+                        </div>
+                    </CardContent>
+                </Card>
+            )
+          }
+          
+          // Fallback for unknown status
+          return (
+              <Card className="border-green-500">
+                  <CardContent className="py-12 text-center">
+                      <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle className="w-8 h-8 text-white" />
+                      </div>
+                      <h2 className="text-2xl font-bold mb-2 text-green-600">
+                        Already Registered!
+                      </h2>
+                      <p className="text-gray-600 mb-6">
+                        You have successfully registered for {event.title}.
+                      </p>
+                      <div className="flex justify-center space-x-4">
+                        <Link href="/events">
+                          <Button variant="outline">Browse More Events</Button>
+                        </Link>
+                      </div>
+                  </CardContent>
+              </Card>
+          )
+      }
+
+      // 3. Registration is not open (deadline passed, not started, or manually closed)
+      if (!isRegistrationAvailable) {
+          let message = 'Registration for this event is currently closed.';
+          if (isRegNotYetOpen) {
+            message = `Registration opens on ${formattedRegStart}.`;
+          } else if (!event.registration_open) {
+            message = 'Registration has been manually closed by the admin.';
+          } else if (regEndDate && now > regEndDate) {
+            message = 'The registration deadline has passed.';
+          } else if (!regStartDate || !regEndDate) {
+            message = 'Registration dates have not been set by the admin.'
+          }
+          
+          return (
+              <Card>
+                  <CardContent className="py-12 text-center text-gray-500">
+                      {isRegNotYetOpen ? (
+                         <FileClock size={48} className="mx-auto mb-4 text-blue-500" />
+                      ) : (
+                         <XCircle size={48} className="mx-auto mb-4 text-red-500" />
+                      )}
+                      <p className="text-lg font-semibold mb-2">Registration Closed</p>
+                      <p>{message}</p>
+                  </CardContent>
+              </Card>
+          )
+      }
+
+      // 4. Not Logged In (and registration is available)
+      if (!user) {
+          return (
+              <Card className="border-yellow-500">
+                  <CardHeader>
+                    <CardTitle>Sign in to Register</CardTitle>
+                    <CardDescription>You must be logged in to access the registration form for this event.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <Link href={`/auth?redirect=${params.id}`}>
+                        <Button className="w-full bg-[#00629B] hover:bg-[#004d7a]">
+                          Login or Register
+                        </Button>
+                      </Link>
+                  </CardContent>
+              </Card>
+          )
+      }
+      
+      // 5. Successfully submitted in current session
+      if (submitted) {
+          return (
+              <Card className="border-orange-500" data-testid="registration-success-card">
+                  <CardContent className="py-12 text-center">
+                      <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <FileClock className="w-8 h-8 text-white" />
+                      </div>
+                      <h2 className="text-2xl font-bold mb-2 text-orange-600">
+                        Registration Submitted Successfully!
+                      </h2>
+                      <p className="text-gray-600 mb-2">
+                        Thank you for registering for <strong>{event.title}</strong>.
+                      </p>
+                      <p className="text-gray-600 mb-6">
+                        Your registration is now pending approval from the event organizers. You'll receive an email notification once it's reviewed.
+                      </p>
+                      <div className="flex justify-center space-x-4">
+                        <Link href="/events">
+                          <Button variant="outline" data-testid="browse-more-events-button">Browse More Events</Button>
+                        </Link>
+                      </div>
+                  </CardContent>
+              </Card>
+          )
+      }
+
+      // 6. Show Form (User logged in, registration open, not yet registered)
+      return (
+          <Card>
+              <CardHeader>
+                  <CardTitle>Registration Form</CardTitle>
+                  <CardDescription>Logged in as: {user.email}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <DynamicForm
+                      fields={event.form_fields || []}
+                      onSubmit={handleSubmit}
+                      eventId={params.id}
+                  />
+              </CardContent>
+          </Card>
+      )
   }
 
-  // MODIFIED: Add permission check
-  const canManage = event && user && (isSuperAdmin || event.created_by === user.id);
-  if (!canManage) {
-    return (
-        <div className="container mx-auto px-4 py-12 max-w-3xl">
-            <Card className="border-red-500">
-                <CardHeader>
-                    <CardTitle className="text-red-600 flex items-center">
-                        <ShieldAlert className="mr-2" />
-                        Access Denied
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-lg">You do not have permission to edit this event. Only the event creator or a super admin can make changes.</p>
-                    <Button onClick={() => router.push('/admin/events')} className="mt-4" variant="outline">
-                        Back to Events
-                    </Button>
-                </CardContent>
-            </Card>
-        </div>
-    )
-  }
-
-  // If we reach here, user has permission
   return (
-    <div className="container mx-auto px-4 py-12 max-w-3xl">
-      <h1 className="text-4xl font-bold mb-8">Edit Event</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Event Banner */}
+      <div className="w-full h-64 bg-gradient-to-br from-[#00629B] to-[#004d7a] relative">
+        {event.banner_url && (
+          <img
+            src={event.banner_url}
+            alt={event.title}
+            className="w-full h-full object-cover"
+          />
+        )}
+        <div className="absolute inset-0 bg-black/40"></div>
+      </div>
 
-      <form onSubmit={handleSubmit}>
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Event Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Event Title *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
-              />
-            </div>
+      <div className="container mx-auto px-4 -mt-16 relative z-10 pb-12">
+        <div className="max-w-4xl mx-auto">
+          {/* Back Button */}
+          <Link href="/events">
+            <Button 
+                variant="ghost" 
+                className="mb-4 text-white hover:text-gray-200 hover:bg-white/10"
+            >
+              <ArrowLeft size={20} className="mr-2" />
+              Back to Events
+            </Button>
+          </Link>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={6}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="event_date">Event Start Date & Time</Label>
-                <Input
-                  id="event_date"
-                  type="datetime-local"
-                  value={formData.event_date}
-                  onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                />
+          {/* Event Info Card */}
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-3xl mb-2">{event.title}</CardTitle>
+                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
+                    <div className="flex items-center">
+                      <Calendar size={16} className="mr-2 text-[#00629B]" />
+                      <span>{formattedDate}</span>
+                    </div>
+                    {formattedTime && (
+                      <div className="flex items-center">
+                        <Clock size={16} className="mr-2 text-[#00629B]" />
+                        <span>{formattedTime}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {statusBadge}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="event_end_date">Event End Date & Time</Label>
-                <Input
-                  id="event_end_date"
-                  type="datetime-local"
-                  value={formData.event_end_date}
-                  onChange={(e) => setFormData({ ...formData, event_end_date: e.target.value })}
-                />
-              </div>
-            </div>
+            </CardHeader>
+            <CardContent>
+              {/* Registration Timeline Card */}
+              <Card className="mb-6 bg-gray-50">
+                <CardHeader>
+                  <CardTitle className="text-lg">Registration Timeline</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium w-20">Starts:</span>
+                    {/* This will now display the time correctly */}
+                    <span className="text-gray-700">{formattedRegStart}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium w-20">Ends:</span>
+                    {/* This will now display the time correctly */}
+                    <span className="text-gray-700">{formattedRegEnd}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            
+              <h3 className="font-bold text-xl mb-2">Description</h3>
+              <p className="text-gray-700 whitespace-pre-wrap">
+                {event.description || 'No description available'}
+              </p>
+            </CardContent>
+          </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="registration_start">Registration Start Date & Time</Label>
-                <Input
-                  id="registration_start"
-                  type="datetime-local"
-                  value={formData.registration_start}
-                  onChange={(e) => setFormData({ ...formData, registration_start: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="registration_end">Registration End Date & Time</Label>
-                <Input
-                  id="registration_end"
-                  type="datetime-local"
-                  value={formData.registration_end}
-                  onChange={(e) => setFormData({ ...formData, registration_end: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="is_active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, is_active: checked })
-                }
-              />
-              <Label htmlFor="is_active" className="font-normal">
-                Event is Active
-              </Label>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="registration_open"
-                checked={formData.registration_open}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, registration_open: checked })
-                }
-              />
-              <Label htmlFor="registration_open" className="font-normal">
-                Registration is Open
-              </Label>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Event Banner</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {formData.banner_url && (
-              <div className="mb-4">
-                <Label className="mb-2 block">Current Banner</Label>
-                <img
-                  src={formData.banner_url}
-                  alt="Current banner"
-                  className="w-full h-48 object-cover rounded-lg"
-                />
-              </div>
-            )}
-
-            <div className="flex space-x-4 mb-4">
-              <Button
-                type="button"
-                variant={bannerMode === 'url' ? 'default' : 'outline'}
-                onClick={() => setBannerMode('url')}
-                className={bannerMode === 'url' ? 'bg-[#00629B]' : ''}
-              >
-                <LinkIcon size={16} className="mr-2" />
-                Use URL
-              </Button>
-              <Button
-                type="button"
-                variant={bannerMode === 'upload' ? 'default' : 'outline'}
-                onClick={() => setBannerMode('upload')}
-                className={bannerMode === 'upload' ? 'bg-[#00629B]' : ''}
-              >
-                <Upload size={16} className="mr-2" />
-                Upload New
-              </Button>
-            </div>
-
-            {bannerMode === 'url' ? (
-              <div className="space-y-2">
-                <Label htmlFor="banner_url">Banner URL</Label>
-                <Input
-                  id="banner_url"
-                  value={bannerUrl}
-                  onChange={(e) => setBannerUrl(e.target.value)}
-                  placeholder="https://example.com/banner.jpg"
-                />
-              </div>
-            ) : (
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${
-                  isDragActive ? 'border-[#00629B] bg-blue-50' : 'border-gray-300'
-                }`}
-              >
-                <input {...getInputProps()} />
-                <Upload size={48} className="mx-auto mb-4 text-gray-400" />
-                {bannerFile ? (
-                  <p className="text-sm">Selected: <strong>{bannerFile.name}</strong></p>
-                ) : (
-                  <p className="text-sm text-gray-600">
-                    {isDragActive ? 'Drop here' : 'Drag & drop or click to select new image'}
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end space-x-4">
-          <Button type="button" variant="outline" onClick={() => router.back()}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            className="bg-[#00629B] hover:bg-[#004d7a]"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Updating...' : 'Update Event'}
-          </Button>
+          {/* Registration Form / Login Prompt */}
+          {registrationContent()}
         </div>
-      </form>
+      </div>
     </div>
-  )
-}
-
-export default function EditEventPage() {
-  return (
-    <ProtectedRoute>
-      <EditEventContent />
-    </ProtectedRoute>
   )
 }
