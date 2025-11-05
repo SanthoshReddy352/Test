@@ -89,48 +89,106 @@ function AdminDashboardContent() {
     router.push('/')
   }
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#00629B]"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-4xl font-bold">Admin Dashboard</h1>
+          <h1 className="text-4xl font-bold" data-testid="admin-dashboard-title">
+            {isSuperAdmin ? 'Super Admin Dashboard' : 'Admin Dashboard'}
+          </h1>
           <p className="text-gray-600 mt-2">Welcome back, {user?.email}</p>
+          {isSuperAdmin && (
+            <p className="text-sm text-[#00629B] font-medium mt-1">You have full system access</p>
+          )}
         </div>
-        <Button onClick={handleLogout} variant="outline">
+        <Button onClick={handleLogout} variant="outline" data-testid="logout-button">
           <LogOut size={20} className="mr-2" />
           Logout
         </Button>
       </div>
 
+      {/* Pending Approvals Alert */}
+      {stats.pendingApprovals > 0 && (
+        <Card className="mb-6 border-orange-500 bg-orange-50" data-testid="pending-approvals-alert">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="text-orange-600" size={24} />
+                <div>
+                  <p className="font-semibold text-orange-900">
+                    {stats.pendingApprovals} Registration{stats.pendingApprovals > 1 ? 's' : ''} Awaiting Approval
+                  </p>
+                  <p className="text-sm text-orange-700">Review and approve participant registrations</p>
+                </div>
+              </div>
+              <Link href="/admin/registrations">
+                <Button className="bg-orange-600 hover:bg-orange-700" data-testid="review-registrations-button">
+                  Review Now
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card data-testid="stat-my-events">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {isSuperAdmin ? 'All Events' : 'My Events'}
+            </CardTitle>
             <Calendar className="text-[#00629B]" size={20} />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.totalEvents}</div>
+            <div className="text-3xl font-bold">{stats.myEvents}</div>
+            <p className="text-xs text-gray-500 mt-1">
+              {isSuperAdmin ? 'System-wide' : 'Created by you'}
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="stat-active-events">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Active Events</CardTitle>
-            <FileText className="text-green-600" size={20} />
+            <TrendingUp className="text-green-600" size={20} />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.activeEvents}</div>
+            <p className="text-xs text-gray-500 mt-1">Currently running</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="stat-total-participants">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Participants</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Registrations</CardTitle>
             <Users className="text-purple-600" size={20} />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.totalParticipants}</div>
+            <p className="text-xs text-gray-500 mt-1">All statuses</p>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="stat-pending-approvals" className={stats.pendingApprovals > 0 ? 'border-orange-500' : ''}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+            <AlertCircle className={stats.pendingApprovals > 0 ? 'text-orange-600' : 'text-gray-400'} size={20} />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.pendingApprovals}</div>
+            <p className="text-xs text-gray-500 mt-1">Awaiting review</p>
           </CardContent>
         </Card>
       </div>
