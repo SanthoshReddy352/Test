@@ -398,10 +398,28 @@ export async function POST(request) {
           return NextResponse.json({ success: false, error: 'Unauthorized: Missing user ID' }, { status: 401, headers: corsHeaders })
       }
       
+      // MODIFIED: Check for existing registration (approved or pending)
+      const { data: existingReg } = await supabase
+        .from('participants')
+        .select('id, status')
+        .eq('event_id', body.event_id)
+        .eq('user_id', participantUserId)
+        .maybeSingle();
+      
+      // If there's an approved or pending registration, don't allow re-registration
+      if (existingReg && (existingReg.status === 'approved' || existingReg.status === 'pending')) {
+        return NextResponse.json(
+          { success: false, error: `You already have a ${existingReg.status} registration for this event.` },
+          { status: 409, headers: corsHeaders }
+        )
+      }
+      
+      // If rejected, allow re-registration (will create new entry)
       const participantData = {
         event_id: body.event_id,
         user_id: participantUserId, 
         responses: body.responses,
+        status: 'pending', // MODIFIED: Default to pending
       }
 
       const { data, error } = await supabase
@@ -411,19 +429,14 @@ export async function POST(request) {
         .single()
 
       if (error) {
-        if (error.code === '23505') { 
-            return NextResponse.json(
-                { success: false, error: 'User is already registered for this event.' },
-                { status: 409, headers: corsHeaders } 
-            )
-        }
-        
         return NextResponse.json(
           { success: false, error: error.message },
           { status: 500, headers: corsHeaders }
         )
       }
 
+      // TODO: Send email notification to event admin about new registration
+      
       return NextResponse.json(
         { success: true, participant: data },
         { headers: corsHeaders }
