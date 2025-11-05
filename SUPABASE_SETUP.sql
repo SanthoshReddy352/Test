@@ -250,3 +250,7 @@ CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_created_by ON events(created_by);
 -- NEW: Index for participant user
 CREATE INDEX IF NOT EXISTS idx_participants_user_id ON participants(user_id);
+-- NEW: Index for participant status (for filtering pending/approved/rejected)
+CREATE INDEX IF NOT EXISTS idx_participants_status ON participants(status);
+-- NEW: Index for reviewed_by (to track who approved)
+CREATE INDEX IF NOT EXISTS idx_participants_reviewed_by ON participants(reviewed_by);
