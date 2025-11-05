@@ -588,6 +588,100 @@ export async function PUT(request) {
       )
     }
 
+    // PUT /api/participants/:id/approve - Approve participant registration
+    if (segments[0] === 'participants' && segments[1] && segments[2] === 'approve') {
+      const participantId = segments[1];
+      
+      const { user, role, error: adminError } = await getAdminUser(request);
+      if (adminError || !user) {
+          return NextResponse.json({ success: false, error: adminError?.message || 'Unauthorized' }, { status: 401, headers: corsHeaders })
+      }
+      
+      // Get participant and event info
+      const { data: participant, error: participantError } = await supabase
+        .from('participants')
+        .select('*, event:events(id, title, created_by)')
+        .eq('id', participantId)
+        .single();
+      
+      if (participantError || !participant) {
+        return NextResponse.json({ success: false, error: 'Participant not found' }, { status: 404, headers: corsHeaders })
+      }
+      
+      // Check permission
+      const canManage = role === 'super_admin' || participant.event.created_by === user.id;
+      if (!canManage) {
+        return NextResponse.json({ success: false, error: 'Forbidden: You do not own this event' }, { status: 403, headers: corsHeaders })
+      }
+      
+      // Update status to approved
+      const { data, error } = await supabase
+        .from('participants')
+        .update({
+          status: 'approved',
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', participantId)
+        .select()
+        .single();
+      
+      if (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
+      }
+      
+      // TODO: Send approval email to participant
+      
+      return NextResponse.json({ success: true, participant: data }, { headers: corsHeaders })
+    }
+
+    // PUT /api/participants/:id/reject - Reject participant registration
+    if (segments[0] === 'participants' && segments[1] && segments[2] === 'reject') {
+      const participantId = segments[1];
+      
+      const { user, role, error: adminError } = await getAdminUser(request);
+      if (adminError || !user) {
+          return NextResponse.json({ success: false, error: adminError?.message || 'Unauthorized' }, { status: 401, headers: corsHeaders })
+      }
+      
+      // Get participant and event info
+      const { data: participant, error: participantError } = await supabase
+        .from('participants')
+        .select('*, event:events(id, title, created_by)')
+        .eq('id', participantId)
+        .single();
+      
+      if (participantError || !participant) {
+        return NextResponse.json({ success: false, error: 'Participant not found' }, { status: 404, headers: corsHeaders })
+      }
+      
+      // Check permission
+      const canManage = role === 'super_admin' || participant.event.created_by === user.id;
+      if (!canManage) {
+        return NextResponse.json({ success: false, error: 'Forbidden: You do not own this event' }, { status: 403, headers: corsHeaders })
+      }
+      
+      // Update status to rejected
+      const { data, error } = await supabase
+        .from('participants')
+        .update({
+          status: 'rejected',
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', participantId)
+        .select()
+        .single();
+      
+      if (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
+      }
+      
+      // TODO: Send rejection email to participant
+      
+      return NextResponse.json({ success: true, participant: data }, { headers: corsHeaders })
+    }
+
     return NextResponse.json(
       { success: false, error: 'Route not found' },
       { status: 404, headers: corsHeaders }
