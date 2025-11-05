@@ -1,5 +1,13 @@
 -- IEEE Club Hackathon Website Database Schema
 -- Run this SQL in your Supabase SQL Editor
+--
+-- IMPORTANT: This schema includes registration approval workflow
+-- New features:
+-- - Participant registration status (pending/approved/rejected)
+-- - Admin approval tracking (reviewed_by, reviewed_at)
+-- - Email notifications on approval/rejection
+--
+-- To update existing database, run the migration commands at the end of this file
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
