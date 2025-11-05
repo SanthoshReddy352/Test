@@ -337,6 +337,14 @@ export async function POST(request) {
     const segments = getPathSegments(request)
     const body = await request.json()
 
+    // --- START OF FIX: Get token for user-scoped client ---
+    const authHeader = request.headers.get('Authorization')
+    let token = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1]
+    }
+    // --- END OF FIX ---
+
     // POST /api/events - Create new event
     if (segments[0] === 'events' && !segments[1]) {
       // MODIFIED: Get admin user first
@@ -344,6 +352,12 @@ export async function POST(request) {
       if (adminError || !user || !role) { // Must have an admin role
           return NextResponse.json({ success: false, error: adminError?.message || 'Unauthorized' }, { status: 401, headers: corsHeaders })
       }
+
+      // --- START OF FIX: Check for token ---
+      if (!token) {
+        return NextResponse.json({ success: false, error: 'Unauthorized: Missing token' }, { status: 401, headers: corsHeaders })
+      }
+      // --- END OF FIX ---
       
       const eventData = {
         title: body.title,
@@ -359,7 +373,16 @@ export async function POST(request) {
         created_by: user.id, // MODIFIED: Set the owner
       }
 
-      const { data, error } = await supabase
+      // --- START OF FIX: Create a user-scoped client for the insert ---
+      // This ensures RLS WITH CHECK policies run as the user.
+      const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+        global: {
+          headers: { 'Authorization': `Bearer ${token}` },
+        },
+      })
+      // --- END OF FIX ---
+
+      const { data, error } = await userSupabase // --- MODIFIED: Use userSupabase
         .from('events')
         .insert([eventData])
         .select()
@@ -380,11 +403,10 @@ export async function POST(request) {
 
     // POST /api/participants - Create new participant registration
     if (segments[0] === 'participants' && !segments[1]) {
-      const authHeader = request.headers.get('Authorization')
+      // const authHeader = request.headers.get('Authorization') // Already got token
       let participantUserId = body.user_id; 
       
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-          const token = authHeader.split(' ')[1]
+      if (token) {
           const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
               global: { headers: { 'Authorization': `Bearer ${token}` } },
           })
