@@ -726,7 +726,25 @@ export async function PUT(request) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
       }
       
-      // TODO: Send rejection email to participant
+      // Send rejection email to participant
+      try {
+        const { data: { user: participantUser } } = await supabase.auth.admin.getUserById(participant.user_id)
+        
+        if (participantUser?.email) {
+          const participantName = participant.responses?.['Name'] || participant.responses?.['Full Name'] || participant.responses?.['name'] || 'Participant'
+          
+          const { sendRejectionEmail } = await import('@/lib/email')
+          await sendRejectionEmail({
+            to: participantUser.email,
+            participantName,
+            eventTitle: participant.event.title,
+            reason: null // Optional: can add rejection reason in future
+          })
+        }
+      } catch (emailError) {
+        console.error('Error sending rejection email:', emailError)
+        // Don't fail the rejection if email fails
+      }
       
       return NextResponse.json({ success: true, participant: data }, { headers: corsHeaders })
     }
