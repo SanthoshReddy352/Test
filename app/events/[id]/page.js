@@ -56,6 +56,7 @@ export default function EventDetailPage() {
   const { user, loading: authLoading } = useAuth() 
   
   const [isRegistered, setIsRegistered] = useState(false) 
+  const [registrationStatus, setRegistrationStatus] = useState(null) // 'pending', 'approved', 'rejected'
   const [regCheckLoading, setRegCheckLoading] = useState(true) 
 
   const checkRegistrationStatus = useCallback(async (userId, eventId) => {
