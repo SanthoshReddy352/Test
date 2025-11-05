@@ -264,6 +264,52 @@ export async function GET(request) {
       )
     }
 
+    // GET /api/participants/pending - Get all pending registrations for admin
+    if (segments[0] === 'participants' && segments[1] === 'pending') {
+      const { user, role, error: adminError } = await getAdminUser(request);
+      if (adminError || !user) {
+          return NextResponse.json({ success: false, error: adminError?.message || 'Unauthorized' }, { status: 401, headers: corsHeaders })
+      }
+      
+      // Build query based on role
+      let query = supabase
+        .from('participants')
+        .select(`
+          *,
+          event:events(id, title, created_by)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      
+      // If not super_admin, only show pending for their own events
+      if (role !== 'super_admin') {
+        // First get events created by this admin
+        const { data: adminEvents, error: eventsError } = await supabase
+          .from('events')
+          .select('id')
+          .eq('created_by', user.id);
+        
+        if (eventsError) {
+          return NextResponse.json({ success: false, error: eventsError.message }, { status: 500, headers: corsHeaders })
+        }
+        
+        const eventIds = adminEvents.map(e => e.id);
+        if (eventIds.length === 0) {
+          return NextResponse.json({ success: true, participants: [] }, { headers: corsHeaders })
+        }
+        
+        query = query.in('event_id', eventIds);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+          return NextResponse.json({ success: false, error: error.message }, { status: 500, headers: corsHeaders })
+      }
+      
+      return NextResponse.json({ success: true, participants: data }, { headers: corsHeaders })
+    }
+
     // Default GET - Health check
     if (segments.length === 0) {
       return NextResponse.json(
