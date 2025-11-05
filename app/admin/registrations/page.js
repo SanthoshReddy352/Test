@@ -39,7 +39,12 @@ function AdminRegistrationsContent() {
   const fetchRegistrations = async () => {
     setLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      // --- START OF FIX ---
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        throw new Error("User not authenticated");
+      }
+      // --- END OF FIX ---
       
       // Fetch events to get event titles
       const eventsRes = await fetch('/api/events')
@@ -104,7 +109,14 @@ function AdminRegistrationsContent() {
     
     setProcessingId(participantId)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      // --- START OF FIX ---
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        alert('Authentication error. Please log in again.');
+        setProcessingId(null); // Stop loading
+        return;
+      }
+      // --- END OF FIX ---
       
       const response = await fetch(`/api/participants/${participantId}/approve`, {
         method: 'PUT',
@@ -135,7 +147,14 @@ function AdminRegistrationsContent() {
     
     setProcessingId(participantId)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      // --- START OF FIX ---
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        alert('Authentication error. Please log in again.');
+        setProcessingId(null); // Stop loading
+        return;
+      }
+      // --- END OF FIX ---
       
       const response = await fetch(`/api/participants/${participantId}/reject`, {
         method: 'PUT',

@@ -6,16 +6,16 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import FormBuilder from '@/components/FormBuilder'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, ShieldAlert } from 'lucide-react'
-import { useAuth } from '@/context/AuthContext' // MODIFIED
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card' // MODIFIED
-import { supabase } from '@/lib/supabase/client' // MODIFIED
+import { useAuth } from '@/context/AuthContext' 
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card' 
+import { supabase } from '@/lib/supabase/client' 
 
 function FormBuilderContent() {
   const params = useParams()
   const router = useRouter()
   const [event, setEvent] = useState(null)
   const [loading, setLoading] = useState(true)
-  const { user, isSuperAdmin, loading: authLoading } = useAuth() // MODIFIED
+  const { user, isSuperAdmin, loading: authLoading } = useAuth() 
 
   useEffect(() => {
     if (params.id) {
@@ -39,8 +39,16 @@ function FormBuilderContent() {
 
   const handleSave = async (fields) => {
     try {
-      // MODIFIED: Pass auth token
-      const { data: { session } } = await supabase.auth.getSession();
+      // --- START OF FIX ---
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        alert('Authentication error. Please log in again.');
+        // Re-throw error to be caught by FormBuilder's catch block
+        throw new Error(sessionError?.message || "User not authenticated");
+      }
+      // --- END OF FIX ---
+
       const response = await fetch(`/api/events/${params.id}`, {
         method: 'PUT',
         headers: { 
@@ -61,7 +69,8 @@ function FormBuilderContent() {
       }
     } catch (error) {
       console.error('Error saving form:', error)
-      alert('An error occurred')
+      // Let the FormBuilder's catch block handle the UI
+      throw error; 
     }
   }
 

@@ -29,11 +29,13 @@ function ParticipantsContent() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      // MODIFIED: Get session for authenticated API calls
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      
+      // --- START OF FIX ---
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
           throw new Error("User not authenticated");
       }
+      // --- END OF FIX ---
       
       const authHeader = { 'Authorization': `Bearer ${session.access_token}` };
 

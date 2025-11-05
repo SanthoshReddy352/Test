@@ -37,12 +37,13 @@ function ProfileContent() {
     setLoading(true)
     setError('')
     try {
-      // Get the session token to make an authenticated API call
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      // --- START OF FIX ---
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
           router.push('/auth');
           return;
       }
+      // --- END OF FIX ---
 
       const response = await fetch('/api/profile', {
         method: 'GET',
@@ -91,8 +92,9 @@ function ProfileContent() {
     setError('')
     setSuccess('')
     
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) {
+    // This part was already correct!
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !session) {
         setError("User session expired. Please log in again.")
         setIsSubmitting(false)
         router.push('/auth')

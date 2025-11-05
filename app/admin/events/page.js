@@ -9,14 +9,14 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Edit, Trash2, Users, FileEdit } from 'lucide-react'
 import { format } from 'date-fns'
-import { useAuth } from '@/context/AuthContext' // MODIFIED: Import useAuth
-import { supabase } from '@/lib/supabase/client' // FIX: Import supabase
+import { useAuth } from '@/context/AuthContext' 
+import { supabase } from '@/lib/supabase/client' 
 
 function AdminEventsContent() {
   const router = useRouter()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
-  const { user, isSuperAdmin } = useAuth() // MODIFIED: Get user and isSuperAdmin
+  const { user, isSuperAdmin } = useAuth() 
 
   useEffect(() => {
     fetchEvents()
@@ -40,8 +40,14 @@ function AdminEventsContent() {
     if (!confirm('Are you sure you want to delete this event?')) return
 
     try {
-      // MODIFIED: Pass auth token for delete operation
-      const { data: { session } } = await supabase.auth.getSession();
+      // --- START OF FIX ---
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        alert('Authentication error. Please log in again.');
+        return; // Exit
+      }
+      // --- END OF FIX ---
+
       const response = await fetch(`/api/events/${id}`, {
         method: 'DELETE',
         headers: {
