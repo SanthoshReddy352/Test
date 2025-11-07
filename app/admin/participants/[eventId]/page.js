@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card' // MODIFIED
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card' 
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { ArrowLeft, Download, ShieldAlert } from 'lucide-react' // MODIFIED
+import { ArrowLeft, Download, ShieldAlert } from 'lucide-react' 
 import { format } from 'date-fns'
-import { useAuth } from '@/context/AuthContext' // MODIFIED
-import { supabase } from '@/lib/supabase/client' // MODIFIED
+import { useAuth } from '@/context/AuthContext' 
+import { supabase } from '@/lib/supabase/client' 
 
 function ParticipantsContent() {
   const params = useParams()
@@ -18,30 +18,28 @@ function ParticipantsContent() {
   const [participants, setParticipants] = useState([])
   const [loading, setLoading] = useState(true)
   const [dynamicFields, setDynamicFields] = useState([]) 
-  const { user, isSuperAdmin, loading: authLoading } = useAuth() // MODIFIED
+  const { user, isSuperAdmin, loading: authLoading } = useAuth() 
 
   useEffect(() => {
-    if (params.eventId && user) { // MODIFIED: Wait for user
+    if (params.eventId && user) { 
       fetchData()
     }
-  }, [params.eventId, user]) // MODIFIED: re-run if user loads
+  }, [params.eventId, user]) 
 
   const fetchData = async () => {
     try {
       setLoading(true)
       
-      // --- START OF FIX ---
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) {
           throw new Error("User not authenticated");
       }
-      // --- END OF FIX ---
       
       const authHeader = { 'Authorization': `Bearer ${session.access_token}` };
 
       const [eventRes, participantsRes] = await Promise.all([
-        fetch(`/api/events/${params.eventId}`), // Event fetch is public
-        fetch(`/api/participants/${params.eventId}`, { headers: authHeader }), // Participants fetch is protected
+        fetch(`/api/events/${params.eventId}`), 
+        fetch(`/api/participants/${params.eventId}`, { headers: authHeader }), 
       ])
 
       const eventData = await eventRes.json()
@@ -54,24 +52,22 @@ function ParticipantsContent() {
           fields = eventData.event.form_fields || []
       }
       
-      // MODIFIED: Check for auth error on participants
       if (participantsRes.status === 403) {
           console.warn("Access denied to participants list.");
-          // Event data loaded, but participant data is forbidden
-          // The component's render logic will handle the access denied message
           setLoading(false);
           return; 
       }
 
-      // --- START OF FIX ---
-      // Set participants directly, no transformation needed
       if (participantsData.success && participantsData.participants) {
-          setParticipants(participantsData.participants)
+          // --- START OF FIX: Filter for approved participants only ---
+          const approvedParticipants = participantsData.participants.filter(
+            (p) => p.status === 'approved'
+          );
+          setParticipants(approvedParticipants);
+          // --- END OF FIX ---
       }
       
-      // Set dynamic fields using both label (for header) and id (for lookup)
       setDynamicFields(fields.map(f => ({ label: f.label, id: f.id })));
-      // --- END OF FIX ---
 
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -80,29 +76,24 @@ function ParticipantsContent() {
     }
   }
 
-  // --- START OF FIX ---
-  // Updated function to get response value
-  // It checks by field.id first (new way), then falls back to field.label (old way)
   const getParticipantResponseValue = (participant, field) => {
       if (!participant.responses) {
-        return undefined; // or null or ''
+        return undefined; 
       }
       
-      // New data is stored by ID
       let value = participant.responses[field.id];
       
-      // Fallback for old data that might have been stored by Label
       if (value === undefined) {
            value = participant.responses[field.label];
       }
       
       return value;
   };
-  // --- END OF FIX ---
 
   const exportToCSV = () => {
+    // --- MODIFICATION: The 'participants' state now only contains 'approved' users, so this exports correctly ---
     if (participants.length === 0) {
-      alert('No participants to export')
+      alert('No approved participants to export')
       return
     }
 
@@ -115,7 +106,6 @@ function ParticipantsContent() {
       ]
       
       dynamicFields.forEach((field) => {
-        // Use the updated getter function
         let value = getParticipantResponseValue(p, field) || '';
         
         if (typeof value === 'boolean') {
@@ -142,7 +132,6 @@ function ParticipantsContent() {
     window.URL.revokeObjectURL(url)
   }
 
-  // MODIFIED: Include authLoading
   if (loading || authLoading) {
     return (
       <div className="text-center py-12">
@@ -151,7 +140,6 @@ function ParticipantsContent() {
     )
   }
 
-  // MODIFIED: Add permission check
   const canManage = event && user && (isSuperAdmin || event.created_by === user.id);
   if (!loading && !authLoading && event && !canManage) {
     return (
@@ -174,8 +162,6 @@ function ParticipantsContent() {
     )
   }
   
-  // --- RENDERING LOGIC ---
-  
   const fixedHeaders = [
     { label: 'S.No', key: 'index', className: 'w-12' }, 
     { label: 'Registration Date', key: 'created_at', className: 'w-40' }
@@ -183,7 +169,7 @@ function ParticipantsContent() {
   
   const allHeaders = [
     ...fixedHeaders,
-    ...dynamicFields // This now contains { label: '...', id: '...' }
+    ...dynamicFields 
   ];
 
 
@@ -217,13 +203,17 @@ function ParticipantsContent() {
       {participants.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-gray-500">
-            <p>No participants yet</p>
+            {/* --- START OF FIX: Updated empty state message --- */}
+            <p>No approved participants yet</p>
+            {/* --- END OF FIX --- */}
           </CardContent>
         </Card>
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Total Registrations: {participants.length}</CardTitle>
+            {/* --- START OF FIX: Updated title --- */}
+            <CardTitle>Total Approved Registrations: {participants.length}</CardTitle>
+            {/* --- END OF FIX --- */}
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -246,7 +236,6 @@ function ParticipantsContent() {
                       </TableCell>
 
                       {dynamicFields.map((field) => {
-                          // Use the updated getter function
                           let value = getParticipantResponseValue(participant, field);
                           
                           if (typeof value === 'boolean') {
@@ -260,7 +249,6 @@ function ParticipantsContent() {
                           }
 
                           return (
-                              // Use field.id for a stable key
                               <TableCell key={`${participant.id}-${field.id}`} className="text-sm">
                                   {value}
                               </TableCell>
