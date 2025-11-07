@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+const supabase = createClient(supabaseUrl, supabaseServiceKey) // This is the ADMIN client
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
 
 // Helper function to extract path segments
@@ -80,11 +80,47 @@ export async function GET(request) {
 
     // GET /api/events - Get all events or filtered events
     if (segments[0] === 'events' && !segments[1]) {
+
+      // --- START OF FIX: Cleanup PENDING registrations for completed events ---
+      const now = new Date().toISOString();
+      try {
+        // 1. Find all event IDs that have already ended
+        const { data: completedEventIds, error: eventIdError } = await supabase
+          .from('events')
+          .select('id')
+          .lt('event_end_date', now); // Find events where end date is in the past
+
+        if (eventIdError) {
+          console.error('Error fetching completed event IDs:', eventIdError.message);
+        } else if (completedEventIds && completedEventIds.length > 0) {
+          const idsToDelete = completedEventIds.map(e => e.id);
+          
+          // 2. Delete ONLY PENDING participants for those completed events
+          const { error: cleanupError } = await supabase
+            .from('participants')
+            .delete()
+            .eq('status', 'pending') // <-- THIS IS THE FIX
+            .in('event_id', idsToDelete);
+
+          if (cleanupError) {
+            console.error('Error cleaning up PENDING registrations:', cleanupError.message);
+          } else {
+            console.log(`Cleaned up PENDING registrations for ${idsToDelete.length} completed event(s).`);
+          }
+        }
+      } catch (cleanupErr) {
+        console.error('Exception during registration cleanup:', cleanupErr.message);
+      }
+      // --- END OF FIX ---
+
+
+      // 3. Now, fetch and return the event list as normal
       let query = supabase
         .from('events')
         .select('*, created_by') 
         .order('created_at', { ascending: false })
 
+      // Filter by active status
       if (params.active === 'true') {
         const now = new Date().toISOString();
         query = query
@@ -92,6 +128,7 @@ export async function GET(request) {
           .or(`event_end_date.gt.${now},event_end_date.is.null`)
       }
 
+      // Limit results
       if (params.limit) {
         query = query.limit(parseInt(params.limit))
       }
@@ -175,6 +212,7 @@ export async function GET(request) {
     if (segments[0] === 'participants' && segments[1] && segments[1] !== 'count') {
       const eventId = segments[1];
       
+      // Check if it's a user checking their own registration
       if (params.userId) {
         const authHeader = request.headers.get('Authorization')
         if (!authHeader) {
@@ -203,11 +241,13 @@ export async function GET(request) {
         return NextResponse.json({ success: true, participant: data }, { headers: corsHeaders })
         
       } else {
+        // This is an ADMIN request for all participants
         const { user, role, error: adminError } = await getAdminUser(request);
         if (adminError || !user) {
             return NextResponse.json({ success: false, error: adminError?.message || 'Unauthorized' }, { status: 401, headers: corsHeaders })
         }
         
+        // Check permissions: Must be super_admin or event owner
         const { data: eventData, error: eventError } = await supabase
             .from('events')
             .select('created_by')
@@ -224,6 +264,7 @@ export async function GET(request) {
             return NextResponse.json({ success: false, error: 'Forbidden: You do not own this event' }, { status: 403, headers: corsHeaders })
         }
         
+        // Permission granted, fetch participants
         const { data, error } = await supabase
             .from('participants')
             .select('*')
@@ -264,10 +305,6 @@ export async function GET(request) {
           return NextResponse.json({ success: false, error: adminError?.message || 'Unauthorized' }, { status: 401, headers: corsHeaders })
       }
       
-      // --- START OF FIX: Removed cleanup logic from here ---
-      // This logic is now in app/admin/registrations/page.js
-      // --- END OF FIX ---
-      
       // Build query based on role
       let query = supabase
         .from('participants')
@@ -278,6 +315,7 @@ export async function GET(request) {
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
       
+      // If not super_admin, only show pending for their own events
       if (role !== 'super_admin') {
         const { data: adminEvents, error: eventsError } = await supabase
           .from('events')
