@@ -14,9 +14,7 @@ export default function Navbar() {
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
-  // --- START OF FIX: Destructure isSuperAdmin ---
   const { user, isAdmin, isSuperAdmin } = useAuth() 
-  // --- END OF FIX ---
 
   const isActive = (path) => pathname === path
 
@@ -81,7 +79,6 @@ export default function Navbar() {
                   </Button>
                 </Link>
                 
-                {/* --- START OF FIX: Show Club Profile only for regular admins --- */}
                 {isAdmin && !isSuperAdmin && (
                     <Link href="/admin/club-profile">
                       <Button 
@@ -93,12 +90,13 @@ export default function Navbar() {
                       </Button>
                     </Link>
                 )}
-                {/* --- END OF FIX --- */}
                 
                 {isAdmin && (
                     <Link href="/admin">
                       <Button variant="ghost" className="text-gray-600 hover:text-[#00629B]">
-                        Admin Portal
+                        {/* --- START OF FIX --- */}
+                        {isSuperAdmin ? 'Super Admin Portal' : 'Admin Portal'}
+                        {/* --- END OF FIX --- */}
                       </Button>
                     </Link>
                 )}
@@ -173,7 +171,6 @@ export default function Navbar() {
                   Profile
                 </Link>
 
-                {/* --- START OF FIX: Show Club Profile only for regular admins --- */}
                 {isAdmin && !isSuperAdmin && (
                     <Link
                       href="/admin/club-profile"
@@ -183,7 +180,6 @@ export default function Navbar() {
                       Club Profile
                     </Link>
                 )}
-                {/* --- END OF FIX --- */}
               
                 {isAdmin && (
                     <Link
@@ -191,7 +187,9 @@ export default function Navbar() {
                       onClick={() => setMobileMenuOpen(false)}
                       className="block py-2 text-gray-600 hover:text-[#00629B]"
                     >
-                      Admin Portal
+                      {/* --- START OF FIX --- */}
+                      {isSuperAdmin ? 'Super Admin Portal' : 'Admin Portal'}
+                      {/* --- END OF FIX --- */}
                     </Link>
                 )}
                 

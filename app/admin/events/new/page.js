@@ -78,7 +78,6 @@ function CreateEventContent() {
     setIsSubmitting(true)
 
     try {
-      // --- START OF FIX ---
       // Get the user's session token to authorize the API request
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -88,7 +87,6 @@ function CreateEventContent() {
         router.push('/admin/login');
         return;
       }
-      // --- END OF FIX ---
 
       let finalBannerUrl = ''
 
@@ -112,7 +110,6 @@ function CreateEventContent() {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            // MODIFIED: Pass the authentication token
             'Authorization': `Bearer ${session.access_token}` 
         },
         body: JSON.stringify(eventData),
@@ -123,7 +120,7 @@ function CreateEventContent() {
         // Redirect to form builder after successful creation
         router.push(`/admin/events/${data.event.id}/form-builder`)
       } else {
-        alert(`Failed to create event: ${data.error}`) // Show the specific error
+        alert(`Failed to create event: ${data.error}`) 
         console.error('API Error:', data.error);
       }
     } catch (error) {
@@ -133,6 +130,13 @@ function CreateEventContent() {
       setIsSubmitting(false)
     }
   }
+
+  // --- START OF ROBUSTNESS FIX ---
+  // Helper function to safely update form data
+  const handleFormChange = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+  };
+  // --- END OF ROBUSTNESS FIX ---
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
@@ -149,7 +153,7 @@ function CreateEventContent() {
               <Input
                 id="title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) => handleFormChange('title', e.target.value)}
                 placeholder="e.g., HackIEEE 2025"
                 required
               />
@@ -160,7 +164,7 @@ function CreateEventContent() {
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) => handleFormChange('description', e.target.value)}
                 placeholder="Event description, rules, prizes, etc."
                 rows={6}
               />
@@ -173,7 +177,7 @@ function CreateEventContent() {
                   id="event_date"
                   type="datetime-local"
                   value={formData.event_date}
-                  onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
+                  onChange={(e) => handleFormChange('event_date', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -182,7 +186,7 @@ function CreateEventContent() {
                   id="event_end_date"
                   type="datetime-local"
                   value={formData.event_end_date}
-                  onChange={(e) => setFormData({ ...formData, event_end_date: e.target.value })}
+                  onChange={(e) => handleFormChange('event_end_date', e.target.value)}
                 />
               </div>
             </div>
@@ -194,7 +198,7 @@ function CreateEventContent() {
                   id="registration_start"
                   type="datetime-local"
                   value={formData.registration_start}
-                  onChange={(e) => setFormData({ ...formData, registration_start: e.target.value })}
+                  onChange={(e) => handleFormChange('registration_start', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -203,7 +207,7 @@ function CreateEventContent() {
                   id="registration_end"
                   type="datetime-local"
                   value={formData.registration_end}
-                  onChange={(e) => setFormData({ ...formData, registration_end: e.target.value })}
+                  onChange={(e) => handleFormChange('registration_end', e.target.value)}
                 />
               </div>
             </div>
@@ -213,9 +217,7 @@ function CreateEventContent() {
                 <Checkbox
                   id="is_active"
                   checked={formData.is_active}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, is_active: checked })
-                  }
+                  onCheckedChange={(checked) => handleFormChange('is_active', checked)}
                 />
                 <Label htmlFor="is_active" className="font-normal">
                   Event is Active (visible on website)
@@ -227,9 +229,7 @@ function CreateEventContent() {
               <Checkbox
                 id="registration_open"
                 checked={formData.registration_open}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, registration_open: checked })
-                }
+                onCheckedChange={(checked) => handleFormChange('registration_open', checked)}
               />
               <Label htmlFor="registration_open" className="font-normal">
                 Registration is Open
