@@ -21,7 +21,6 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAuth } from '@/context/AuthContext'
-// --- START OF FIX: Import Dialog components ---
 import { 
   Dialog, 
   DialogContent, 
@@ -29,7 +28,6 @@ import {
   DialogTitle, 
   DialogDescription 
 } from '@/components/ui/dialog'
-// --- END OF FIX ---
 
 function AdminRegistrationsContent() {
   const router = useRouter()
@@ -38,9 +36,7 @@ function AdminRegistrationsContent() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('pending') // pending, approved, rejected, all
   const [processingId, setProcessingId] = useState(null)
-  // --- START OF FIX: Add state for modal ---
   const [selectedRegistration, setSelectedRegistration] = useState(null)
-  // --- END OF FIX ---
 
   useEffect(() => {
     if (user) {
@@ -56,26 +52,22 @@ function AdminRegistrationsContent() {
         throw new Error("User not authenticated");
       }
       
-      // --- START OF FIX: Add cleanup logic here ---
-      // This runs *before* fetching registrations.
       const now = new Date().toISOString();
       try {
-        // Find event IDs that have already ended
         const { data: completedEventIds, error: eventIdError } = await supabase
           .from('events')
           .select('id')
-          .lt('event_end_date', now); // Find events where end date is in the past
+          .lt('event_end_date', now); 
 
         if (eventIdError) {
           console.error('Error fetching completed event IDs:', eventIdError.message);
         } else if (completedEventIds && completedEventIds.length > 0) {
           const idsToDelete = completedEventIds.map(e => e.id);
           
-          // Delete 'pending' participants for those completed events
           const { error: cleanupError } = await supabase
             .from('participants')
             .delete()
-            .eq('status', 'pending') // Only delete pending ones
+            .eq('status', 'pending') 
             .in('event_id', idsToDelete);
 
           if (cleanupError) {
@@ -87,7 +79,6 @@ function AdminRegistrationsContent() {
       } catch (cleanupErr) {
         console.error('Exception during registration cleanup:', cleanupErr.message);
       }
-      // --- END OF FIX ---
       
       
       // Fetch events to get event titles AND FORM FIELDS
@@ -111,7 +102,6 @@ function AdminRegistrationsContent() {
         return
       }
       
-      // Fetch all participants for my events
       const participantPromises = myEventIds.map(eventId =>
         fetch(`/api/participants/${eventId}`, {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
@@ -120,7 +110,6 @@ function AdminRegistrationsContent() {
       
       const participantResults = await Promise.all(participantPromises)
       
-      // Flatten and combine with event info
       const allRegistrations = []
       participantResults.forEach((result, index) => {
         if (result.success && result.participants) {
@@ -132,15 +121,12 @@ function AdminRegistrationsContent() {
               ...participant,
               event_title: event?.title || 'Unknown Event',
               event_id: eventId,
-              // --- START OF FIX: Attach the event's form fields to the registration ---
               form_fields: event?.form_fields || [] 
-              // --- END OF FIX ---
             })
           })
         }
       })
       
-      // Sort by created_at (newest first)
       allRegistrations.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       
       setRegistrations(allRegistrations)
@@ -150,15 +136,9 @@ function AdminRegistrationsContent() {
       setLoading(false)
     }
   }
-
-  // --- START OF FIX: Helper function to get label from field ID ---
-  const getLabelForFieldId = (fieldId, formFields) => {
-    if (!formFields) return fieldId;
-    const field = formFields.find(f => f.id === fieldId);
-    // Fallback to fieldId if label not found (shouldn't happen)
-    return field ? field.label : fieldId; 
-  };
-  // --- END OF FIX ---
+  
+  // This helper is no longer needed as we iterate the form_fields array
+  // const getLabelForFieldId = (fieldId, formFields) => { ... }
 
   const handleApprove = async (participantId) => {
     if (!confirm('Approve this registration?')) return
@@ -344,7 +324,6 @@ function AdminRegistrationsContent() {
                 </div>
               </CardHeader>
               <CardContent>
-                {/* --- START OF FIX: Replaced inline details with View Details button --- */}
                 <div className="flex justify-between items-center mb-4">
                   <p className="text-sm text-gray-500">
                     Review submission details before making a decision.
@@ -358,7 +337,6 @@ function AdminRegistrationsContent() {
                     View Details
                   </Button>
                 </div>
-                {/* --- END OF FIX --- */}
                 
                 {/* Action Buttons */}
                 {registration.status === 'pending' && (
@@ -408,7 +386,7 @@ function AdminRegistrationsContent() {
         </div>
       )}
 
-      {/* --- START OF FIX: Add Registration Details Modal --- */}
+      {/* --- START OF FIX: Modified Registration Details Modal --- */}
       <Dialog 
         open={!!selectedRegistration} 
         onOpenChange={(isOpen) => {
@@ -425,17 +403,49 @@ function AdminRegistrationsContent() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
-            {selectedRegistration && Object.entries(selectedRegistration.responses || {}).map(([fieldId, value]) => (
-              <div key={fieldId} className="border-l-2 border-[#00629B] pl-3">
-                <p className="text-sm font-medium text-gray-800">
-                  {/* Use the helper function to get the correct label */}
-                  {getLabelForFieldId(fieldId, selectedRegistration.form_fields)}
-                </p>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{String(value) || 'N/A'}</p>
-              </div>
-            ))}
-            {(!selectedRegistration || !Object.keys(selectedRegistration.responses).length) && (
-              <p className="text-gray-500">No responses found for this registration.</p>
+            {selectedRegistration && selectedRegistration.form_fields && selectedRegistration.form_fields.length > 0 ? (
+              // Iterate over the form_fields array to maintain order
+              selectedRegistration.form_fields.map((field) => {
+                const value = selectedRegistration.responses[field.id];
+                // Check if the field type is 'url' or if the value string starts with http
+                const isUrl = field.type === 'url' || (typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://')));
+
+                return (
+                  <div key={field.id} className="border-l-2 border-[#00629B] pl-3">
+                    <p className="text-sm font-medium text-gray-800">
+                      {field.label}
+                    </p>
+                    {isUrl ? (
+                      <a
+                        href={value}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:underline break-all"
+                      >
+                        {value || 'N/A'}
+                      </a>
+                    ) : (
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                        {/* Handle boolean values, empty strings, null, and undefined gracefully */}
+                        {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : (value !== null && value !== undefined && value !== '' ? String(value) : 'N/A')}
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              // Fallback for registrations with no form_fields (e.g., old data)
+              selectedRegistration && Object.entries(selectedRegistration.responses || {}).map(([key, value]) => (
+                <div key={key} className="border-l-2 border-[#00629B] pl-3">
+                  <p className="text-sm font-medium text-gray-800">{key}</p>
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{String(value) || 'N/A'}</p>
+                </div>
+              ))
+            )}
+            
+            {/* Show message if no responses are found at all */}
+            {selectedRegistration && (!selectedRegistration.form_fields || selectedRegistration.form_fields.length === 0) && (!selectedRegistration.responses || Object.keys(selectedRegistration.responses).length === 0) && (
+               <p className="text-gray-500">No responses found for this registration.</p>
             )}
           </div>
         </DialogContent>
