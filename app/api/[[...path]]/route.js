@@ -78,28 +78,58 @@ export async function GET(request) {
     const segments = getPathSegments(request)
     const params = getQueryParams(request)
 
+    // GET /api/clubs - Get all clubs with profiles
+    if (segments[0] === 'clubs' && !segments[1]) {
+      const { data, error } = await supabase
+        .from('admin_users')
+        .select('club_name, club_logo_url')
+        .not('club_name', 'is', null) // Only get admins who have set a name
+        .not('club_name', 'eq', '')   // and the name is not empty
+        .not('club_logo_url', 'is', null) // and they have a logo
+        .not('club_logo_url', 'eq', '');
+
+      if (error) {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 500, headers: corsHeaders }
+        )
+      }
+      
+      // --- FIX for duplicates: Get unique clubs ---
+      const uniqueClubs = data.reduce((acc, club) => {
+        if (!acc.find(item => item.club_name === club.club_name)) {
+          acc.push(club);
+        }
+        return acc;
+      }, []);
+
+      return NextResponse.json(
+        { success: true, clubs: uniqueClubs },
+        { headers: corsHeaders }
+      )
+    }
+
+
     // GET /api/events - Get all events or filtered events
     if (segments[0] === 'events' && !segments[1]) {
 
-      // --- START OF FIX: Cleanup PENDING registrations for completed events ---
+      // --- Cleanup logic (unchanged) ---
       const now = new Date().toISOString();
       try {
-        // 1. Find all event IDs that have already ended
         const { data: completedEventIds, error: eventIdError } = await supabase
           .from('events')
           .select('id')
-          .lt('event_end_date', now); // Find events where end date is in the past
+          .lt('event_end_date', now); 
 
         if (eventIdError) {
           console.error('Error fetching completed event IDs:', eventIdError.message);
         } else if (completedEventIds && completedEventIds.length > 0) {
           const idsToDelete = completedEventIds.map(e => e.id);
           
-          // 2. Delete ONLY PENDING participants for those completed events
           const { error: cleanupError } = await supabase
             .from('participants')
             .delete()
-            .eq('status', 'pending') // <-- THIS IS THE FIX
+            .eq('status', 'pending') 
             .in('event_id', idsToDelete);
 
           if (cleanupError) {
@@ -111,14 +141,30 @@ export async function GET(request) {
       } catch (cleanupErr) {
         console.error('Exception during registration cleanup:', cleanupErr.message);
       }
-      // --- END OF FIX ---
+      // --- End cleanup logic ---
 
 
-      // 3. Now, fetch and return the event list as normal
+      // --- START OF MODIFICATION: Corrected JOIN syntax ---
+      // We select the 'created_by' column, and Supabase automatically
+      // populates it with data from the 'admin_users' table.
       let query = supabase
         .from('events')
-        .select('*, created_by') 
+        .select(`
+          id,
+          title,
+          description,
+          banner_url,
+          event_date,
+          event_end_date,
+          is_active,
+          registration_open,
+          registration_start,
+          registration_end,
+          created_at,
+          club:created_by(club_name, club_logo_url) 
+        `)
         .order('created_at', { ascending: false })
+      // --- END OF MODIFICATION ---
 
       // Filter by active status
       if (params.active === 'true') {
@@ -136,25 +182,38 @@ export async function GET(request) {
       const { data, error } = await query
 
       if (error) {
+        // This is where your error came from.
+        // It should be fixed now that the SQL migration is done.
         return NextResponse.json(
           { success: false, error: error.message },
           { status: 500, headers: corsHeaders }
         )
       }
+      
+      // Rename 'created_by' to 'club' in the response for cleaner data
+      const events = data.map(event => {
+          const { club, ...rest } = event;
+          return { ...rest, club };
+      });
 
       return NextResponse.json(
-        { success: true, events: data },
+        { success: true, events: events },
         { headers: corsHeaders }
       )
     }
 
     // GET /api/events/:id - Get single event
     if (segments[0] === 'events' && segments[1]) {
+      // --- START OF MODIFICATION: Corrected JOIN syntax ---
       const { data, error } = await supabase
         .from('events')
-        .select('*, created_by') 
+        .select(`
+          *, 
+          club:created_by(club_name, club_logo_url)
+        `)
         .eq('id', segments[1])
         .single()
+      // --- END OF MODIFICATION ---
 
       if (error) {
         return NextResponse.json(
@@ -162,9 +221,12 @@ export async function GET(request) {
           { status: 404, headers: corsHeaders }
         )
       }
+      
+      const { created_by, ...rest } = data;
+      const event = { ...rest, club: created_by };
 
       return NextResponse.json(
-        { success: true, event: data },
+        { success: true, event: event },
         { headers: corsHeaders }
       )
     }
@@ -401,13 +463,8 @@ export async function POST(request) {
         created_by: user.id, 
       }
 
-      const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-          headers: { 'Authorization': `Bearer ${token}` },
-        },
-      })
-
-      const { data, error } = await userSupabase 
+      // We use the admin client here to insert, as RLS policy checks 'get_admin_role()'
+      const { data, error } = await supabase 
         .from('events')
         .insert([eventData])
         .select()

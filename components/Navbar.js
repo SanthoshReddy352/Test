@@ -4,20 +4,17 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Menu, X, LogIn, LogOut, User } from 'lucide-react' 
+import { Menu, X, LogIn, LogOut, User, Building } from 'lucide-react' // --- MODIFIED: Added Building icon ---
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { useAuth } from '@/context/AuthContext' // IMPORT useAuth
+import { useAuth } from '@/context/AuthContext' 
 
 export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
-  // USE THE CONTEXT
   const { user, isAdmin } = useAuth() 
-
-  // REMOVED: All useEffects related to auth, as context now handles it.
 
   const isActive = (path) => pathname === path
 
@@ -27,8 +24,6 @@ export default function Navbar() {
     router.push('/')
   }
   
-  // REMOVED: The loading placeholder, as the layout now handles this.
-
   return (
     <nav className="bg-white border-b shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4">
@@ -60,7 +55,6 @@ export default function Navbar() {
               Events
             </Link>
             
-            {/* CONDITIONAL RENDERING: Show Contact only if logged-in non-admin */}
             {user && !isAdmin && (
                 <Link
                   href="/contact"
@@ -85,6 +79,20 @@ export default function Navbar() {
                   </Button>
                 </Link>
                 
+                {/* --- START OF FIX: Added Club Profile Link --- */}
+                {isAdmin && (
+                    <Link href="/admin/club-profile">
+                      <Button 
+                        variant="ghost" 
+                        className={`text-gray-600 hover:text-[#00629B] ${isActive('/admin/club-profile') ? 'font-semibold' : ''}`}
+                      >
+                        <Building size={16} className="mr-2" />
+                        Club Profile
+                      </Button>
+                    </Link>
+                )}
+                {/* --- END OF FIX --- */}
+                
                 {isAdmin && (
                     <Link href="/admin">
                       <Button variant="ghost" className="text-gray-600 hover:text-[#00629B]">
@@ -93,7 +101,6 @@ export default function Navbar() {
                     </Link>
                 )}
                 
-                {/* Regular Logged-in User (Participant or Admin) */}
                 <Button variant="default" onClick={handleLogout} className="bg-red-500 hover:bg-red-600">
                   <LogOut size={16} className="mr-2" />
                   Logout
@@ -163,6 +170,18 @@ export default function Navbar() {
                 >
                   Profile
                 </Link>
+
+                {/* --- START OF FIX: Added Mobile Club Profile Link --- */}
+                {isAdmin && (
+                    <Link
+                      href="/admin/club-profile"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block py-2 text-gray-600 hover:text-[#00629B]"
+                    >
+                      Club Profile
+                    </Link>
+                )}
+                {/* --- END OF FIX --- */}
               
                 {isAdmin && (
                     <Link
