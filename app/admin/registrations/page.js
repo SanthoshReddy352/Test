@@ -21,6 +21,15 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { useAuth } from '@/context/AuthContext'
+// --- START OF FIX: Import Dialog components ---
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription 
+} from '@/components/ui/dialog'
+// --- END OF FIX ---
 
 function AdminRegistrationsContent() {
   const router = useRouter()
@@ -29,6 +38,9 @@ function AdminRegistrationsContent() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('pending') // pending, approved, rejected, all
   const [processingId, setProcessingId] = useState(null)
+  // --- START OF FIX: Add state for modal ---
+  const [selectedRegistration, setSelectedRegistration] = useState(null)
+  // --- END OF FIX ---
 
   useEffect(() => {
     if (user) {
@@ -78,7 +90,7 @@ function AdminRegistrationsContent() {
       // --- END OF FIX ---
       
       
-      // Fetch events to get event titles
+      // Fetch events to get event titles AND FORM FIELDS
       const eventsRes = await fetch('/api/events')
       const eventsData = await eventsRes.json()
       
@@ -119,7 +131,10 @@ function AdminRegistrationsContent() {
             allRegistrations.push({
               ...participant,
               event_title: event?.title || 'Unknown Event',
-              event_id: eventId
+              event_id: eventId,
+              // --- START OF FIX: Attach the event's form fields to the registration ---
+              form_fields: event?.form_fields || [] 
+              // --- END OF FIX ---
             })
           })
         }
@@ -135,6 +150,15 @@ function AdminRegistrationsContent() {
       setLoading(false)
     }
   }
+
+  // --- START OF FIX: Helper function to get label from field ID ---
+  const getLabelForFieldId = (fieldId, formFields) => {
+    if (!formFields) return fieldId;
+    const field = formFields.find(f => f.id === fieldId);
+    // Fallback to fieldId if label not found (shouldn't happen)
+    return field ? field.label : fieldId; 
+  };
+  // --- END OF FIX ---
 
   const handleApprove = async (participantId) => {
     if (!confirm('Approve this registration?')) return
@@ -291,7 +315,7 @@ function AdminRegistrationsContent() {
       ) : (
         <div className="space-y-4">
           {filteredRegistrations.map((registration) => (
-            <Card key={registration.id} className="hover:shadow-md transition-shadow" data-testid={`registration-card-${registration.id}`}>
+            <Card key={registration.id} className="transition-shadow" data-testid={`registration-card-${registration.id}`}>
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -320,16 +344,22 @@ function AdminRegistrationsContent() {
                 </div>
               </CardHeader>
               <CardContent>
-                {/* Display Response Fields */}
-                <div className="space-y-3 mb-4">
-                  {Object.entries(registration.responses || {}).map(([key, value]) => (
-                    <div key={key} className="border-l-2 border-gray-200 pl-3">
-                      <p className="text-sm font-medium text-gray-700">{key}</p>
-                      <p className="text-sm text-gray-900">{value || 'N/A'}</p>
-                    </div>
-                  ))}
+                {/* --- START OF FIX: Replaced inline details with View Details button --- */}
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-sm text-gray-500">
+                    Review submission details before making a decision.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedRegistration(registration)}
+                    data-testid={`view-details-button-${registration.id}`}
+                  >
+                    View Details
+                  </Button>
                 </div>
-
+                {/* --- END OF FIX --- */}
+                
                 {/* Action Buttons */}
                 {registration.status === 'pending' && (
                   <div className="flex gap-2 pt-4 border-t">
@@ -377,6 +407,41 @@ function AdminRegistrationsContent() {
           ))}
         </div>
       )}
+
+      {/* --- START OF FIX: Add Registration Details Modal --- */}
+      <Dialog 
+        open={!!selectedRegistration} 
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setSelectedRegistration(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Registration Details</DialogTitle>
+            <DialogDescription>
+              Reviewing submission for <strong>{selectedRegistration?.event_title}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            {selectedRegistration && Object.entries(selectedRegistration.responses || {}).map(([fieldId, value]) => (
+              <div key={fieldId} className="border-l-2 border-[#00629B] pl-3">
+                <p className="text-sm font-medium text-gray-800">
+                  {/* Use the helper function to get the correct label */}
+                  {getLabelForFieldId(fieldId, selectedRegistration.form_fields)}
+                </p>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{String(value) || 'N/A'}</p>
+              </div>
+            ))}
+            {(!selectedRegistration || !Object.keys(selectedRegistration.responses).length) && (
+              <p className="text-gray-500">No responses found for this registration.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* --- END OF FIX --- */}
+      
     </div>
   )
 }
