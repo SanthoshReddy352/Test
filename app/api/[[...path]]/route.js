@@ -144,27 +144,16 @@ export async function GET(request) {
       // --- End cleanup logic ---
 
 
-      // --- START OF MODIFICATION: Corrected JOIN syntax ---
-      // We select the 'created_by' column, and Supabase automatically
-      // populates it with data from the 'admin_users' table.
+      // --- START OF FIX: Explicitly select 'created_by' AND the 'club' relation ---
       let query = supabase
         .from('events')
         .select(`
-          id,
-          title,
-          description,
-          banner_url,
-          event_date,
-          event_end_date,
-          is_active,
-          registration_open,
-          registration_start,
-          registration_end,
-          created_at,
-          club:created_by(club_name, club_logo_url) 
+          *, 
+          created_by, 
+          club:created_by(club_name, club_logo_url)
         `)
         .order('created_at', { ascending: false })
-      // --- END OF MODIFICATION ---
+      // --- END OF FIX ---
 
       // Filter by active status
       if (params.active === 'true') {
@@ -182,38 +171,33 @@ export async function GET(request) {
       const { data, error } = await query
 
       if (error) {
-        // This is where your error came from.
-        // It should be fixed now that the SQL migration is done.
         return NextResponse.json(
           { success: false, error: error.message },
           { status: 500, headers: corsHeaders }
         )
       }
       
-      // Rename 'created_by' to 'club' in the response for cleaner data
-      const events = data.map(event => {
-          const { club, ...rest } = event;
-          return { ...rest, club };
-      });
-
+      // --- START OF FIX: No longer need to map and remove fields ---
       return NextResponse.json(
-        { success: true, events: events },
+        { success: true, events: data },
         { headers: corsHeaders }
       )
+      // --- END OF FIX ---
     }
 
     // GET /api/events/:id - Get single event
     if (segments[0] === 'events' && segments[1]) {
-      // --- START OF MODIFICATION: Corrected JOIN syntax ---
+      // --- START OF FIX: Explicitly select 'created_by' AND the 'club' relation ---
       const { data, error } = await supabase
         .from('events')
         .select(`
           *, 
+          created_by, 
           club:created_by(club_name, club_logo_url)
         `)
         .eq('id', segments[1])
         .single()
-      // --- END OF MODIFICATION ---
+      // --- END OF FIX ---
 
       if (error) {
         return NextResponse.json(
@@ -222,13 +206,12 @@ export async function GET(request) {
         )
       }
       
-      const { created_by, ...rest } = data;
-      const event = { ...rest, club: created_by };
-
+      // --- START OF FIX: No longer need to destructure/rename ---
       return NextResponse.json(
-        { success: true, event: event },
+        { success: true, event: data },
         { headers: corsHeaders }
       )
+      // --- END OF FIX ---
     }
     
     // GET /api/profile - Get current user profile
