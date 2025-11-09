@@ -19,15 +19,28 @@ function AdminEventsContent() {
   const { user, isSuperAdmin } = useAuth() 
 
   useEffect(() => {
-    fetchEvents()
-  }, [])
+    // --- START OF FIX: Ensure user is loaded before fetching ---
+    if (user) {
+      fetchEvents()
+    }
+    // --- END OF FIX ---
+  }, [user, isSuperAdmin]) // Add isSuperAdmin to dependency array
 
   const fetchEvents = async () => {
     try {
       const response = await fetch('/api/events')
       const data = await response.json()
       if (data.success) {
-        setEvents(data.events)
+        // --- START OF FIX: Filter events based on role ---
+        const allEvents = data.events;
+        if (isSuperAdmin) {
+          setEvents(allEvents); // Super admin sees all events
+        } else {
+          // Normal admin sees only their own events
+          const myEvents = allEvents.filter(event => event.created_by === user.id);
+          setEvents(myEvents);
+        }
+        // --- END OF FIX ---
       }
     } catch (error) {
       console.error('Error fetching events:', error)
@@ -40,13 +53,11 @@ function AdminEventsContent() {
     if (!confirm('Are you sure you want to delete this event?')) return
 
     try {
-      // --- START OF FIX ---
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) {
         alert('Authentication error. Please log in again.');
-        return; // Exit
+        return;
       }
-      // --- END OF FIX ---
 
       const response = await fetch(`/api/events/${id}`, {
         method: 'DELETE',
@@ -93,7 +104,11 @@ function AdminEventsContent() {
       {events.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-gray-500 mb-4">No events yet</p>
+            {/* --- START OF FIX: Context-aware message --- */}
+            <p className="text-gray-500 mb-4">
+              {isSuperAdmin ? "No events found in the system." : "You have not created any events yet."}
+            </p>
+            {/* --- END OF FIX --- */}
             <Link href="/admin/events/new">
               <Button className="bg-[#00629B] hover:bg-[#004d7a]">
                 Create Your First Event
@@ -104,8 +119,13 @@ function AdminEventsContent() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event) => {
-            // MODIFIED: Check permissions
+            // This logic is now redundant for filtering but still good for disabling buttons
+            // in a theoretical edge case, so we'll keep it.
             const canManage = isSuperAdmin || (user && event.created_by === user.id);
+            
+            const now = new Date();
+            const eventEndDate = event.event_end_date ? new Date(event.event_end_date) : null;
+            const isCompleted = eventEndDate && now > eventEndDate;
             
             return (
               <Card key={event.id} className="flex flex-col">
@@ -113,10 +133,15 @@ function AdminEventsContent() {
                   <div className="flex justify-between items-start mb-2">
                     <CardTitle className="text-lg">{event.title}</CardTitle>
                     <div className="flex gap-2">
-                      {event.is_active && (
+                      {isCompleted ? (
+                        <Badge className="bg-gray-500">Completed</Badge>
+                      ) : event.is_active ? (
                         <Badge className="bg-green-500">Active</Badge>
+                      ) : (
+                        <Badge variant="outline">Inactive</Badge>
                       )}
-                      {event.registration_open && (
+                      
+                      {!isCompleted && event.registration_open && (
                         <Badge className="bg-blue-500">Open</Badge>
                       )}
                     </div>
@@ -132,74 +157,38 @@ function AdminEventsContent() {
                 </CardHeader>
                 <CardFooter className="mt-auto flex flex-col gap-2">
                   <div className="grid grid-cols-2 gap-2 w-full">
-                    {/* MODIFIED: Conditional button */}
-                    {canManage ? (
-                      <Link href={`/admin/events/${event.id}`} className="w-full">
-                        <Button variant="outline" className="w-full" size="sm">
-                          <Edit size={16} className="mr-1" />
-                          Edit
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button variant="outline" className="w-full" size="sm" disabled>
+                    <Link href={`/admin/events/${event.id}`} className="w-full">
+                      <Button variant="outline" className="w-full" size="sm" disabled={!canManage}>
                         <Edit size={16} className="mr-1" />
                         Edit
                       </Button>
-                    )}
+                    </Link>
                     
-                    {/* MODIFIED: Conditional button */}
-                    {canManage ? (
-                      <Link href={`/admin/events/${event.id}/form-builder`} className="w-full">
-                        <Button variant="outline" className="w-full" size="sm">
-                          <FileEdit size={16} className="mr-1" />
-                          Form
-                        </Button>
-                      </Link>
-                    ) : (
-                       <Button variant="outline" className="w-full" size="sm" disabled>
+                    <Link href={`/admin/events/${event.id}/form-builder`} className="w-full">
+                      <Button variant="outline" className="w-full" size="sm" disabled={!canManage}>
                         <FileEdit size={16} className="mr-1" />
                         Form
                       </Button>
-                    )}
+                    </Link>
                   </div>
                   <div className="grid grid-cols-2 gap-2 w-full">
-                    {/* MODIFIED: Conditional button */}
-                    {canManage ? (
-                      <Link href={`/admin/participants/${event.id}`} className="w-full">
-                        <Button variant="outline" className="w-full" size="sm">
-                          <Users size={16} className="mr-1" />
-                          Participants
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button variant="outline" className="w-full" size="sm" disabled>
+                    <Link href={`/admin/participants/${event.id}`} className="w-full">
+                      <Button variant="outline" className="w-full" size="sm" disabled={!canManage}>
                         <Users size={16} className="mr-1" />
                         Participants
                       </Button>
-                    )}
+                    </Link>
                     
-                    {/* MODIFIED: Conditional button */}
-                    {canManage ? (
-                      <Button
-                        variant="destructive"
-                        className="w-full"
-                        size="sm"
-                        onClick={() => handleDelete(event.id)}
-                      >
-                        <Trash2 size={16} className="mr-1" />
-                        Delete
-                      </Button>
-                    ) : (
-                       <Button
-                        variant="destructive"
-                        className="w-full"
-                        size="sm"
-                        disabled
-                      >
-                        <Trash2 size={16} className="mr-1" />
-                        Delete
-                      </Button>
-                    )}
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      size="sm"
+                      onClick={() => handleDelete(event.id)}
+                      disabled={!canManage}
+                    >
+                      <Trash2 size={16} className="mr-1" />
+                      Delete
+                    </Button>
                   </div>
                 </CardFooter>
               </Card>
