@@ -257,8 +257,9 @@ export default function EventDetailPage() {
   }
   
   const registrationContent = () => {
-      // Show loader only on *initial* auth check
+      // --- START OF FIX: Show loader only on *initial* auth check ---
       if (authLoading) {
+      // --- END OF FIX ---
           return (
               <Card>
                   <CardContent className="py-12 text-center">
@@ -468,7 +469,7 @@ export default function EventDetailPage() {
                   {/* --- END OF FIX --- */}
               </CardHeader>
               <CardContent>
-                  {/* --- START OF FIX: Show loader, but DO NOT unmount form --- */}
+                  {/* --- START OF FIX: Show loader *above* the form, but DO NOT unmount the form --- */}
                   {regCheckLoading && (
                       <div className="py-12 text-center">
                           <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#00629B]" />
@@ -476,11 +477,11 @@ export default function EventDetailPage() {
                       </div>
                   )}
                   
-                  {/* This fieldset will be disabled while regCheckLoading is true,
-                    preventing submission but keeping the form (and its state) mounted.
-                    When regCheckLoading becomes false, the fieldset is enabled.
+                  {/* The fieldset is now ALWAYS rendered, but DISABLED and HIDDEN.
+                    This preserves the form's state (which is held in `formData`).
+                    The `sessionStorage` logic provides a backup.
                   */}
-                  <fieldset disabled={regCheckLoading} className={regCheckLoading ? 'opacity-50' : ''}>
+                  <fieldset disabled={regCheckLoading} className={regCheckLoading ? 'hidden' : 'block'}>
                       <DynamicForm
                           fields={event.form_fields || []}
                           onSubmit={handleSubmit}
