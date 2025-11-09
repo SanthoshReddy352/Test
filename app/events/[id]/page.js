@@ -16,7 +16,7 @@ import { useAuth } from '@/context/AuthContext'
 const formatEventDate = (start, end, timeZone) => {
   if (!start) return { date: 'Date TBA', time: null };
   
-  const startDate = formatInTimeZone(start, timeZone, 'MMMM dd, yyyy');
+  const startDate = formatInTimeZone(start, timeZone, 'MMMM dd, yyyY');
   const startTime = formatInTimeZone(start, timeZone, 'hh:mm a zzz'); 
   
   if (!end) {
