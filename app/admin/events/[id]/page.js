@@ -134,6 +134,19 @@ function EditEventContent() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    // --- START OF VALIDATION ---
+    if (formData.event_end_date && formData.event_date && new Date(formData.event_end_date) < new Date(formData.event_date)) {
+        alert('Event end date cannot be before the event start date.');
+        return;
+    }
+    
+    if (formData.registration_end && formData.registration_start && new Date(formData.registration_end) < new Date(formData.registration_start)) {
+        alert('Registration end date cannot be before the registration start date.');
+        return;
+    }
+    // --- END OF VALIDATION ---
+
     setIsSubmitting(true)
 
     try {
