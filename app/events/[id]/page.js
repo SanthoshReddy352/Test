@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import DynamicForm from '@/components/DynamicForm'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card' 
@@ -12,9 +12,68 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client' 
 import { useAuth } from '@/context/AuthContext' 
 
-// (Helper functions unchanged)
+// Helper function to format date ranges
+const formatEventDate = (start, end, timeZone) => {
+  if (!start) return 'Date TBA';
+  
+  const tz = formatInTimeZone(start, timeZone, 'zzz');
+  const startDate = formatInTimeZone(start, timeZone, 'MMM dd');
+  const startTime = formatInTimeZone(start, timeZone, 'hh:mm a');
+  
+  if (!end) {
+    return `${startDate} at ${startTime} ${tz}`;
+  }
 
-export default function EventDetailPage() {
+  const endDate = formatInTimeZone(end, timeZone, 'MMM dd');
+  const endTime = formatInTimeZone(end, timeZone, 'hh:mm a');
+
+  if (startDate === endDate) {
+    return `${startDate} · ${startTime} - ${endTime} ${tz}`;
+  }
+  
+  return `${startDate} ${startTime} - ${endDate} ${endTime} ${tz}`;
+}
+
+// Helper function to get event status
+const getEventStatus = (event) => {
+  const now = new Date();
+  const eventEndDate = event.event_end_date ? parseISO(event.event_end_date) : null;
+  const regStartDate = event.registration_start ? parseISO(event.registration_start) : null;
+  const regEndDate = event.registration_end ? parseISO(event.registration_end) : null;
+
+  if (eventEndDate && now > eventEndDate) {
+    return { text: 'Completed', color: 'bg-gray-500', icon: <CheckCircle size={16} /> };
+  }
+  
+  if (!event.is_active) {
+    return { text: 'Inactive', color: 'bg-gray-400' };
+  }
+
+  if (regStartDate && now < regStartDate) {
+    return { 
+      text: `Opens ${format(regStartDate, 'MMM dd')}`, 
+      color: 'bg-blue-500',
+      icon: <FileClock size={16} />
+    };
+  }
+
+  if ((regEndDate && now > regEndDate) || !event.registration_open) {
+    return { text: 'Registration Closed', color: 'bg-red-500', icon: <XCircle size={16} /> };
+  }
+
+  if (regStartDate && regEndDate && now >= regStartDate && now < regEndDate && event.registration_open) {
+     return { text: 'Registration Open', color: 'bg-green-500', icon: <CheckCircle size={16} /> };
+  }
+  
+  if (event.registration_open && !regStartDate && !regEndDate) {
+     return { text: 'Registration Open', color: 'bg-green-500', icon: <CheckCircle size={16} /> };
+  }
+
+  return { text: 'Closed', color: 'bg-red-500', icon: <XCircle size={16} /> };
+}
+
+
+function EventDetailContent() {
   const params = useParams()
   const router = useRouter()
   const [event, setEvent] = useState(null)
@@ -23,24 +82,82 @@ export default function EventDetailPage() {
   const { user, loading: authLoading } = useAuth() 
   const [isRegistered, setIsRegistered] = useState(false) 
   const [registrationStatus, setRegistrationStatus] = useState(null)
-  const [regCheckLoading, setRegCheckLoading] = useState(false) 
+  const [regCheckLoading, setRegCheckLoading] = useState(true) // Start true
   const storageKey = `formData-${params.id}`;
   
   const [formData, setFormData] = useState(() => {
-    // (Unchanged)
+     if (typeof window !== 'undefined') {
+      const saved = window.sessionStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : {};
+    }
+    return {};
   });
 
   const setAndStoreFormData = (newData) => {
-    // (Unchanged)
+    setFormData(newData);
+    window.sessionStorage.setItem(storageKey, JSON.stringify(newData));
   };
 
-  const checkRegistrationStatus = useCallback(async (userId, eventId) => {
-    // (Unchanged, but now includes setters in dep array)
-  }, [setIsRegistered, setRegistrationStatus, setRegCheckLoading]) 
-
-  useEffect(() => {
-    // (Fetch event data unchanged)
+  // --- START OF FIX: Added function logic ---
+  const fetchEvent = useCallback(async () => {
+    if (!params.id) return;
+    
+    setLoading(true); // Ensure loading is true at the start
+    try {
+      const response = await fetch(`/api/events/${params.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setEvent(data.event);
+      } else {
+        setEvent(null); // Set event to null on error
+      }
+    } catch (error) {
+      console.error('Error fetching event:', error);
+      setEvent(null);
+    } finally {
+      setLoading(false); // Set loading to false after fetch
+    }
   }, [params.id]);
+
+  const checkRegistrationStatus = useCallback(async (userId, eventId) => {
+    if (!userId || !eventId) {
+      setRegCheckLoading(false);
+      return;
+    }
+    setRegCheckLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+         throw new Error("No active session");
+      }
+
+      const response = await fetch(`/api/participants/${eventId}?userId=${userId}`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      const data = await response.json();
+      
+      if (data.success && data.participant) {
+        setIsRegistered(true);
+        setRegistrationStatus(data.participant.status);
+      } else {
+        setIsRegistered(false);
+        setRegistrationStatus(null);
+      }
+    } catch (error) {
+      console.error("Error checking registration:", error);
+      setIsRegistered(false);
+      setRegistrationStatus(null);
+    } finally {
+      setRegCheckLoading(false);
+    }
+  }, []); // Removed setters from deps, they are stable
+  // --- END OF FIX ---
+
+  // --- START OF FIX: Updated useEffect ---
+  useEffect(() => {
+    fetchEvent();
+  }, [fetchEvent]); 
+  // --- END OF FIX ---
 
   useEffect(() => {
     if (loading || authLoading || !event) return; 
@@ -52,32 +169,116 @@ export default function EventDetailPage() {
         setRegistrationStatus(null);
         setRegCheckLoading(false); 
     }
-  }, [user?.id, event?.id, loading, authLoading, checkRegistrationStatus]); 
+  }, [user, event, loading, authLoading, checkRegistrationStatus]); 
 
   const handleSubmit = async (submitData) => {
-    // (Unchanged)
+    if (!user) {
+        alert('You must be logged in to register.');
+        return;
+    }
+    
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            throw new Error("No active session. Please log in again.");
+        }
+      
+        const response = await fetch('/api/participants', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+                event_id: params.id,
+                user_id: user.id,
+                responses: submitData
+            }),
+        });
+        
+        const data = await response.json();
+
+        if (data.success) {
+            setSubmitted(true);
+            window.sessionStorage.removeItem(storageKey); // Clear saved form data
+        } else {
+            alert(`Registration failed: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        alert(`An error occurred: ${error.message}`);
+    }
   }
 
-  if (loading && !authLoading) {
+  if (loading || (authLoading && !event)) {
      return (
         <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div> {/* CHANGED */}
-              <p className="mt-4 text-gray-400">Loading event...</p> {/* CHANGED */}
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div>
+              <p className="mt-4 text-gray-400">Loading event...</p>
             </div>
         </div>
      )
   }
 
-  // (Date/status logic unchanged)
+  if (!event) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-4xl mx-auto text-center">
+           <Link href="/events">
+            <Button 
+                variant="ghost" 
+                className="mb-4"
+            >
+              <ArrowLeft size={20} className="mr-2" />
+              Back to Events
+            </Button>
+          </Link>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl text-red-500">Event Not Found</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-400">Sorry, we couldn't find the event you're looking for.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+  
+  // Date/status logic
+  const TIME_ZONE = 'Asia/Kolkata'; 
+  const eventStartDate = event.event_date ? parseISO(event.event_date) : null;
+  const eventEndDate = event.event_end_date ? parseISO(event.event_end_date) : null;
+  const regStartDate = event.registration_start ? parseISO(event.registration_start) : null;
+  const regEndDate = event.registration_end ? parseISO(event.registration_end) : null;
+  
+  const formattedDate = formatEventDate(eventStartDate, eventEndDate, TIME_ZONE);
+  const formattedTime = eventStartDate ? formatInTimeZone(eventStartDate, TIME_ZONE, 'hh:mm a zzz') : null;
+  const formattedRegStart = regStartDate ? formatEventDate(regStartDate, null, TIME_ZONE) : 'Not specified';
+  const formattedRegEnd = regEndDate ? formatEventDate(regEndDate, null, TIME_ZONE) : 'Not specified';
+  
+  const status = getEventStatus(event);
+  const isCompleted = status.text === 'Completed';
+  const isRegistrationAvailable = status.color === 'bg-green-500';
+  
+  const statusBadge = (
+      <span 
+          className={`text-white text-xs px-3 py-1 rounded-full flex items-center gap-1.5 ${status.color}`}
+      >
+          {status.icon}
+          {status.text}
+      </span>
+  );
   
   const registrationContent = () => {
-      if (authLoading) {
+      if (authLoading || regCheckLoading) {
           return (
               <Card>
                   <CardContent className="py-12 text-center">
-                      <Loader2 className="mx-auto h-8 w-8 animate-spin text-brand-red" /> {/* CHANGED */}
-                      <p className="mt-4 text-gray-400">Checking session...</p> {/* CHANGED */}
+                      <Loader2 className="mx-auto h-8 w-8 animate-spin text-brand-red" />
+                      <p className="mt-4 text-gray-400">Checking your status...</p>
                   </CardContent>
               </Card>
           )
@@ -94,12 +295,61 @@ export default function EventDetailPage() {
               </Card>
           )
       }
+      
       if (isRegistered) {
-          // (All status cards are unchanged, they use green/orange/red which is fine)
+          if (registrationStatus === 'approved') {
+              return (
+                  <Card className="border-green-500">
+                      <CardHeader>
+                          <CardTitle className="text-green-500">You are Registered!</CardTitle>
+                          <CardDescription>Your registration for this event has been approved.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                          <p className="text-gray-300">We look forward to seeing you at the event. You will receive further details via email.</p>
+                      </CardContent>
+                  </Card>
+              )
+          }
+          if (registrationStatus === 'pending') {
+              return (
+                  <Card className="border-orange-500">
+                      <CardHeader>
+                          <CardTitle className="text-orange-500">Registration Pending</CardTitle>
+                          <CardDescription>Your submission is being reviewed by the admin.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                          <p className="text-gray-300">You will be notified by email once your registration is approved or rejected.</p>
+                      </CardContent>
+                  </Card>
+              )
+          }
+           if (registrationStatus === 'rejected') {
+              return (
+                  <Card className="border-red-500">
+                      <CardHeader>
+                          <CardTitle className="text-red-500">Registration Rejected</CardTitle>
+                          <CardDescription>Unfortunately, your registration was not approved.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                          <p className="text-gray-300">If you believe this is a mistake, please contact the event organizers.</p>
+                      </CardContent>
+                  </Card>
+              )
+          }
       }
+      
       if (!isRegistrationAvailable) {
-          // (Unchanged)
+          return (
+              <Card>
+                  <CardContent className="py-12 text-center text-gray-500">
+                      <XCircle size={48} className="mx-auto mb-4 text-gray-400" />
+                      <p className="text-lg font-semibold mb-2">Registration Closed</p>
+                      <p>The registration period for this event has ended or has not yet begun.</p>
+                  </CardContent>
+              </Card>
+          )
       }
+      
       if (!user) {
           return (
               <Card className="border-yellow-500">
@@ -109,7 +359,7 @@ export default function EventDetailPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                       <Link href={`/auth?redirect=${params.id}`}>
-                        <Button className="w-full bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity"> {/* CHANGED */}
+                        <Button className="w-full bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity">
                           Login or Register
                         </Button>
                       </Link>
@@ -117,8 +367,19 @@ export default function EventDetailPage() {
               </Card>
           )
       }
+      
       if (submitted) {
-          // (Unchanged, orange pending card is fine)
+          return (
+              <Card className="border-orange-500">
+                  <CardHeader>
+                      <CardTitle className="text-orange-500">Registration Submitted</CardTitle>
+                      <CardDescription>Your submission is now pending review.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <p className="text-gray-300">You will be notified by email once your registration is approved or rejected.</p>
+                  </CardContent>
+              </Card>
+          )
       }
 
       // 6. Show Form
@@ -129,34 +390,21 @@ export default function EventDetailPage() {
                   <CardDescription>Logged in as: {user?.email || 'Loading...'}</CardDescription>
               </CardHeader>
               <CardContent className="relative">
-                  {regCheckLoading && (
-                      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm"> {/* CHANGED */}
-                          <Loader2 className="mx-auto h-8 w-8 animate-spin text-brand-red" /> {/* CHANGED */}
-                          <p className="mt-4 text-gray-400">Checking registration status...</p> {/* CHANGED */}
-                      </div>
-                  )}
-                  
-                  <fieldset disabled={regCheckLoading}>
-                      <DynamicForm
-                          fields={event.form_fields || []}
-                          onSubmit={handleSubmit}
-                          eventId={params.id}
-                          formData={formData} 
-                          onFormChange={setAndStoreFormData} 
-                      />
-                  </fieldset>
+                  <DynamicForm
+                      fields={event.form_fields || []}
+                      onSubmit={handleSubmit}
+                      eventId={params.id}
+                      formData={formData} 
+                      onFormChange={setAndStoreFormData} 
+                  />
               </CardContent>
           </Card>
       )
   }
 
-  if (!loading && !authLoading && !event) {
-    // (Unchanged, error state is fine)
-  }
-
   return (
-    <div className="min-h-screen bg-background"> {/* CHANGED */}
-      <div className="w-full h-64 bg-brand-gradient relative"> {/* CHANGED */}
+    <div className="min-h-screen bg-background">
+      <div className="w-full h-64 bg-brand-gradient relative">
         {event?.banner_url && (
           <img
             src={event.banner_url}
@@ -186,14 +434,14 @@ export default function EventDetailPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-3xl mb-2">{event.title}</CardTitle>
-                      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-400"> {/* CHANGED */}
+                      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-400">
                         <div className="flex items-center">
-                          <Calendar size={16} className="mr-2 text-brand-red" /> {/* CHANGED */}
+                          <Calendar size={16} className="mr-2 text-brand-red" />
                           <span>{formattedDate}</span>
                         </div>
                         {formattedTime && (
                           <div className="flex items-center">
-                            <Clock size={16} className="mr-2 text-brand-red" /> {/* CHANGED */}
+                            <Clock size={16} className="mr-2 text-brand-red" />
                             <span>{formattedTime}</span>
                           </div>
                         )}
@@ -203,24 +451,24 @@ export default function EventDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Card className="mb-6 bg-background"> {/* CHANGED */}
+                  <Card className="mb-6 bg-background">
                     <CardHeader>
                       <CardTitle className="text-lg">Registration Timeline</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
                         <span className="font-medium w-20">Starts:</span>
-                        <span className="text-gray-300">{formattedRegStart}</span> {/* CHANGED */}
+                        <span className="text-gray-300">{formattedRegStart}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium w-20">Ends:</span>
-                        <span className="text-gray-300">{formattedRegEnd}</span> {/* CHANGED */}
+                        <span className="text-gray-300">{formattedRegEnd}</span>
                       </div>
                     </CardContent>
                   </Card>
                 
                   <h3 className="font-bold text-xl mb-2">Description</h3>
-                  <p className="text-gray-300 whitespace-pre-wrap"> {/* CHANGED */}
+                  <p className="text-gray-300 whitespace-pre-wrap">
                     {event.description || 'No description available'}
                   </p>
                 </CardContent>
@@ -232,5 +480,21 @@ export default function EventDetailPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// We wrap the default export in Suspense to allow useParams()
+export default function EventDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div>
+          <p className="mt-4 text-gray-400">Loading event...</p>
+        </div>
+      </div>
+    }>
+      <EventDetailContent />
+    </Suspense>
   )
 }
