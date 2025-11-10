@@ -38,7 +38,9 @@ function NewEventContent() {
     description: '',
     event_date: '',
     event_end_date: '',
-    is_active: true,
+    // --- START OF FIX ---
+    is_active: false, // Default to inactive (draft)
+    // --- END OF FIX ---
     registration_open: true,
     registration_start: getCurrentDateTimeLocal(), // Default to now
     registration_end: '',
@@ -135,7 +137,7 @@ function NewEventContent() {
 
       const data = await response.json()
       if (data.success) {
-        alert('Event created successfully!')
+        alert('Event created successfully! (Saved as draft)') // Updated message
         router.push('/admin/events')
       } else {
         alert(`Failed to create event: ${data.error}`) 
@@ -204,6 +206,7 @@ function NewEventContent() {
                   type="datetime-local"
                   value={formData.event_date}
                   onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
+                  className="custom-date-icon"
                 />
               </div>
               <div className="space-y-2">
@@ -213,6 +216,7 @@ function NewEventContent() {
                   type="datetime-local"
                   value={formData.event_end_date}
                   onChange={(e) => setFormData({ ...formData, event_end_date: e.target.value })}
+                  className="custom-date-icon"
                 />
               </div>
             </div>
@@ -225,6 +229,7 @@ function NewEventContent() {
                   type="datetime-local"
                   value={formData.registration_start}
                   onChange={(e) => setFormData({ ...formData, registration_start: e.target.value })}
+                  className="custom-date-icon"
                 />
               </div>
               <div className="space-y-2">
@@ -234,6 +239,7 @@ function NewEventContent() {
                   type="datetime-local"
                   value={formData.registration_end}
                   onChange={(e) => setFormData({ ...formData, registration_end: e.target.value })}
+                  className="custom-date-icon"
                 />
               </div>
             </div>
@@ -247,7 +253,7 @@ function NewEventContent() {
                 }
               />
               <Label htmlFor="is_active" className="font-normal">
-                Event is Active
+                Event is Active (Publicly Visible)
               </Label>
             </div>
 

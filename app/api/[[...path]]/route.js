@@ -446,7 +446,7 @@ export async function POST(request) {
         banner_url: body.banner_url,
         event_date: body.event_date || null,
         event_end_date: body.event_end_date || null,
-        is_active: body.is_active !== undefined ? body.is_active : true,
+        is_active: body.is_active !== undefined ? body.is_active : false, // Default to false (draft)
         registration_open: body.registration_open !== undefined ? body.registration_open : true,
         registration_start: body.registration_start || null,
         registration_end: body.registration_end || null,
