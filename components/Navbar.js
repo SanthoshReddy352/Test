@@ -11,32 +11,53 @@ import { useAuth } from '@/context/AuthContext'
 
 export default function Navbar() {
   const pathname = usePathname()
-  const router = useRouter()
+  const router = useRouter() // Keep router for other navigation
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   const { user, isAdmin, isSuperAdmin } = useAuth() 
 
   const isActive = (path) => pathname === path
 
+  // --- START OF FIX: Aggressive Logout ---
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    setMobileMenuOpen(false)
-    router.push('/')
+    setMobileMenuOpen(false); // Close menu immediately
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error && error.message !== "Session from session_id claim in JWT does not exist") {
+        console.error('Error logging out:', error.message);
+      }
+    } catch (error) {
+      console.error('Error in signOut process:', error);
+    } finally {
+      // This is the aggressive part. Supabase stores its data in
+      // localStorage. We will manually clear all keys related to Supabase
+      // to ensure no stale session data remains.
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const keysToRemove = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && key.startsWith('sb-')) { // Supabase keys start with 'sb-'
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => window.localStorage.removeItem(key));
+      }
+      
+      // Force a full page reload by navigating to the root.
+      // This will clear all React state and force a re-initialization.
+      window.location.href = '/'; 
+    }
   }
+  // --- END OF FIX ---
   
   return (
-    <nav className="bg-background border-b border-border shadow-sm sticky top-0 z-50"> {/* MODIFIED: Added border-border */}
+    <nav className="bg-background border-b border-border shadow-sm sticky top-0 z-50"> 
       <div className="container mx-auto px-4">
-        {/* --- START OF FIX: Increased navbar height --- */}
-        <div className="flex justify-between items-center h-20"> {/* CHANGED: h-16 to h-20 */}
+        <div className="flex justify-between items-center h-20"> 
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            {/* --- START OF FIX: Increased logo size --- */}
-            {/* Make sure you moved logo.jpg to /public/logo.jpg */}
-            <img src="/logo.jpg" alt="EventX Logo" className="h-14 w-auto" /> {/* CHANGED: h-10 to h-14 */}
-            {/* --- END OF FIX --- */}
+            <img src="/logo.jpg" alt="EventX Logo" className="h-14 w-auto" /> 
           </Link>
-          {/* --- END OF FIX --- */}
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">

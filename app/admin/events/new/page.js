@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Upload, Link as LinkIcon, ArrowLeft } from 'lucide-react' // Added ArrowLeft
+import { Upload, Link as LinkIcon, ArrowLeft } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/context/AuthContext' 
@@ -31,27 +31,60 @@ const getCurrentDateTimeLocal = () => {
   }
 }
 
+// --- START OF FIX: Add storage keys ---
+const storageKey = 'newEventFormData';
+const bannerUrlStorageKey = 'newEventBannerUrl';
+// --- END OF FIX ---
+
 function NewEventContent() {
   const router = useRouter()
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    event_date: '',
-    event_end_date: '',
-    // --- START OF FIX ---
-    is_active: false, // Default to inactive (draft)
-    // --- END OF FIX ---
-    registration_open: true,
-    registration_start: getCurrentDateTimeLocal(), // Default to now
-    registration_end: '',
-    banner_url: '',
-  })
+  
+  // --- START OF FIX: Load formData from session storage ---
+  const [formData, setFormData] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedData = window.sessionStorage.getItem(storageKey);
+      if (savedData) {
+        return JSON.parse(savedData);
+      }
+    }
+    // Return default state if nothing is saved
+    return {
+      title: '',
+      description: '',
+      event_date: '',
+      event_end_date: '',
+      is_active: false,
+      registration_open: true,
+      registration_start: getCurrentDateTimeLocal(),
+      registration_end: '',
+      banner_url: '',
+    };
+  });
+  
   const [bannerMode, setBannerMode] = useState('url')
-  const [bannerUrl, setBannerUrl] = useState('')
+  
+  // Load bannerUrl from session storage
+  const [bannerUrl, setBannerUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.sessionStorage.getItem(bannerUrlStorageKey) || '';
+    }
+    return '';
+  });
+  // --- END OF FIX ---
+
   const [bannerFile, setBannerFile] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   const { loading: authLoading } = useAuth()
+
+  // --- START OF FIX: Save form data to session storage on change ---
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(formData));
+      window.sessionStorage.setItem(bannerUrlStorageKey, bannerUrl);
+    }
+  }, [formData, bannerUrl]);
+  // --- END OF FIX ---
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 0) {
@@ -125,7 +158,6 @@ function NewEventContent() {
       
       const { data: { session } } = await supabase.auth.getSession();
       
-      // --- CHANGED to POST and /api/events ---
       const response = await fetch(`/api/events`, {
         method: 'POST',
         headers: { 
@@ -137,7 +169,15 @@ function NewEventContent() {
 
       const data = await response.json()
       if (data.success) {
-        alert('Event created successfully! (Saved as draft)') // Updated message
+        alert('Event created successfully! (Saved as draft)')
+        
+        // --- START OF FIX: Clear storage on success ---
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem(storageKey);
+          window.sessionStorage.removeItem(bannerUrlStorageKey);
+        }
+        // --- END OF FIX ---
+
         router.push('/admin/events')
       } else {
         alert(`Failed to create event: ${data.error}`) 

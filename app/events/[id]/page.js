@@ -1,5 +1,3 @@
-// app/events/[id]/page.js
-
 'use client'
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
@@ -8,13 +6,14 @@ import DynamicForm from '@/components/DynamicForm'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card' 
 import { Button } from '@/components/ui/button'
 import { Calendar, Clock, ArrowLeft, Loader2, FileClock, XCircle, CheckCircle } from 'lucide-react'
-import { parseISO } from 'date-fns'; 
+// --- START OF FIX: Import 'format' ---
+import { parseISO, format } from 'date-fns'; 
+// --- END OF FIX ---
 import { formatInTimeZone } from 'date-fns-tz'; 
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client' 
 import { useAuth } from '@/context/AuthContext' 
 
-// (Helper functions formatEventDate and getEventStatus remain unchanged)
 // Helper function to format date ranges
 const formatEventDate = (start, end, timeZone) => {
   if (!start) return 'Date TBA';
@@ -54,6 +53,7 @@ const getEventStatus = (event) => {
 
   if (regStartDate && now < regStartDate) {
     return { 
+      // --- FIX: 'format' is now defined ---
       text: `Opens ${format(regStartDate, 'MMM dd')}`, 
       color: 'bg-blue-500',
       icon: <FileClock size={16} />
@@ -157,9 +157,7 @@ function EventDetailContent() {
   useEffect(() => {
     fetchEvent();
   }, [fetchEvent]); 
-
-  // --- START OF FIX ---
-  // This useEffect now depends on primitive IDs and loading states.
+  
   useEffect(() => {
     if (loading || authLoading || !event?.id) return; 
 
@@ -172,7 +170,6 @@ function EventDetailContent() {
     }
   // Depend on user.id and event.id
   }, [user?.id, event?.id, loading, authLoading, checkRegistrationStatus]); 
-  // --- END OF FIX ---
 
   const handleSubmit = async (submitData) => {
     if (!user) {

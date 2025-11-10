@@ -43,7 +43,16 @@ function EventsPage() {
 
   useEffect(() => {
     filterEvents()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, filter, events, clubFilter]) // Add filter to dependency array
+
+  // --- START OF FIX: Helper function to check if event is completed ---
+  const isEventCompleted = (event) => {
+    const now = new Date();
+    const eventEndDate = event.event_end_date ? parseISO(event.event_end_date) : null;
+    return eventEndDate && now > eventEndDate;
+  };
+  // --- END OF FIX ---
 
   const fetchEvents = async () => {
     try {
@@ -51,8 +60,25 @@ function EventsPage() {
       const response = await fetch('/api/events?active=true', { cache: 'no-store' })
       const data = await response.json()
       if (data.success) {
-        setEvents(data.events)
-        setFilteredEvents(data.events)
+        // --- START OF FIX: Sort events to show active first ---
+        const allEvents = data.events;
+        allEvents.sort((a, b) => {
+          const aCompleted = isEventCompleted(a);
+          const bCompleted = isEventCompleted(b);
+
+          if (aCompleted && !bCompleted) {
+            return 1; // a (completed) comes after b (active)
+          }
+          if (!aCompleted && bCompleted) {
+            return -1; // a (active) comes before b (completed)
+          }
+          // If both are active or both are completed, keep original (created_at) order
+          return 0;
+        });
+        // --- END OF FIX ---
+
+        setEvents(allEvents)
+        setFilteredEvents(allEvents)
       }
     } catch (error) {
       console.error('Error fetching events:', error)
@@ -79,7 +105,6 @@ function EventsPage() {
       )
     }
 
-    // --- START OF FIX: Updated filter logic ---
     // Filter by status
     if (filter === 'active') {
       filtered = filtered.filter(event => {
@@ -106,7 +131,6 @@ function EventsPage() {
       })
     }
     // If filter is 'all', we do nothing and show all fetched (is_active: true) events
-    // --- END OF FIX ---
 
     setFilteredEvents(filtered)
   }
@@ -140,14 +164,12 @@ function EventsPage() {
           <SelectTrigger className="w-full md:w-48">
             <SelectValue />
           </SelectTrigger>
-          {/* --- START OF FIX: Added 'Completed' filter --- */}
           <SelectContent>
             <SelectItem value="all">All Events</SelectItem>
             <SelectItem value="active">Active Only</SelectItem>
             <SelectItem value="open">Registration Open</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
-          {/* --- END OF FIX --- */}
         </Select>
       </div>
 

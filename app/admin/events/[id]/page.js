@@ -14,8 +14,7 @@ import { useDropzone } from 'react-dropzone'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/context/AuthContext' 
 
-// (Helper functions remain unchanged)
-// Helper to convert ISO string (from DB) to local datetime-local format
+// (Helper functions toDateTimeLocal and toISOString remain unchanged)
 const toDateTimeLocal = (isoString) => {
   if (!isoString) return '';
   try {
@@ -26,7 +25,6 @@ const toDateTimeLocal = (isoString) => {
     return '';
   }
 }
-// Helper to convert datetime-local string (from input) back to ISO format (UTC)
 const toISOString = (dateTimeLocalString) => {
     if (!dateTimeLocalString) return null;
     return new Date(dateTimeLocalString).toISOString();
@@ -36,22 +34,48 @@ const toISOString = (dateTimeLocalString) => {
 function EditEventContent() {
   const params = useParams()
   const router = useRouter()
+  
+  // --- START OF FIX: Add dynamic storage keys and loaded flag ---
+  const storageKey = `editEventFormData-${params.id}`;
+  const bannerUrlStorageKey = `editEventBannerUrl-${params.id}`;
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  // --- END OF FIX ---
+
   const [event, setEvent] = useState(null) 
   const [loading, setLoading] = useState(true)
   const [found, setFound] = useState(false) 
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    event_date: '',
-    event_end_date: '',
-    is_active: true,
-    registration_open: true,
-    registration_start: '',
-    registration_end: '',
-    banner_url: '',
-  })
+  
+  // --- START OF FIX: Initialize from session storage or default ---
+  const [formData, setFormData] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedData = window.sessionStorage.getItem(storageKey);
+      if (savedData) {
+        return JSON.parse(savedData);
+      }
+    }
+    return {
+      title: '',
+      description: '',
+      event_date: '',
+      event_end_date: '',
+      is_active: true,
+      registration_open: true,
+      registration_start: '',
+      registration_end: '',
+      banner_url: '',
+    };
+  });
+  
   const [bannerMode, setBannerMode] = useState('url')
-  const [bannerUrl, setBannerUrl] = useState('')
+
+  const [bannerUrl, setBannerUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.sessionStorage.getItem(bannerUrlStorageKey) || '';
+    }
+    return '';
+  });
+  // --- END OF FIX ---
+  
   const [bannerFile, setBannerFile] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
@@ -66,19 +90,32 @@ function EditEventContent() {
         const event = data.event
         setEvent(event) 
         
-        setFormData({
-          title: event.title,
-          description: event.description || '',
-          event_date: toDateTimeLocal(event.event_date),
-          event_end_date: toDateTimeLocal(event.event_end_date),
-          is_active: event.is_active,
-          registration_open: event.registration_open,
-          registration_start: toDateTimeLocal(event.registration_start), 
-          registration_end: toDateTimeLocal(event.registration_end),     
-          banner_url: event.banner_url || '',
-        })
-        setBannerUrl(event.banner_url || '')
+        // --- START OF FIX: Load from storage or fetch ---
+        // Check if session storage has data. If not, populate from fetch.
+        if (typeof window !== 'undefined' && !window.sessionStorage.getItem(storageKey)) {
+          setFormData({
+            title: event.title,
+            description: event.description || '',
+            event_date: toDateTimeLocal(event.event_date),
+            event_end_date: toDateTimeLocal(event.event_end_date),
+            is_active: event.is_active,
+            registration_open: event.registration_open,
+            registration_start: toDateTimeLocal(event.registration_start), 
+            registration_end: toDateTimeLocal(event.registration_end),     
+            banner_url: event.banner_url || '',
+          });
+          setBannerUrl(event.banner_url || '');
+        }
+        // If storage *does* have data, useState initializer already loaded it.
+        // We just ensure bannerUrl is also loaded (in case it wasn't set)
+        else if (typeof window !== 'undefined' && !window.sessionStorage.getItem(bannerUrlStorageKey)) {
+           setBannerUrl(event.banner_url || '');
+        }
+        
         setFound(true)
+        setIsDataLoaded(true); // Signal that initial data is loaded
+        // --- END OF FIX ---
+
       } else {
         setFound(false)
       }
@@ -88,13 +125,23 @@ function EditEventContent() {
     } finally {
       setLoading(false)
     }
-  }, [params.id])
+  }, [params.id, storageKey, bannerUrlStorageKey]) // Add storage keys to dependency array
 
   useEffect(() => {
     if (params.id) {
       fetchEvent()
     }
   }, [params.id, fetchEvent])
+
+  // --- START OF FIX: Save form data to session storage on change ---
+  useEffect(() => {
+    // Don't save to session storage until *after* the initial data has been loaded
+    if (isDataLoaded && params.id) {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(formData));
+      window.sessionStorage.setItem(bannerUrlStorageKey, bannerUrl);
+    }
+  }, [formData, bannerUrl, isDataLoaded, params.id, storageKey, bannerUrlStorageKey]);
+  // --- END OF FIX ---
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 0) {
@@ -178,6 +225,14 @@ function EditEventContent() {
       const data = await response.json()
       if (data.success) {
         alert('Event updated successfully!')
+        
+        // --- START OF FIX: Clear storage on success ---
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.removeItem(storageKey);
+          window.sessionStorage.removeItem(bannerUrlStorageKey);
+        }
+        // --- END OF FIX ---
+        
         router.push('/admin/events')
       } else {
         alert(`Failed to update event: ${data.error}`) 
@@ -194,7 +249,7 @@ function EditEventContent() {
   if (loading || authLoading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div> {/* CHANGED */}
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div>
       </div>
     )
   }
@@ -219,7 +274,6 @@ function EditEventContent() {
             <CardTitle>Event Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* (Form fields are unchanged) */}
             <div className="space-y-2">
               <Label htmlFor="title">Event Title *</Label>
               <Input
@@ -229,7 +283,6 @@ function EditEventContent() {
                 required
               />
             </div>
-            {/* ... other fields ... */}
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -248,6 +301,7 @@ function EditEventContent() {
                   type="datetime-local"
                   value={formData.event_date}
                   onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
+                  className="custom-date-icon"
                 />
               </div>
               <div className="space-y-2">
@@ -257,6 +311,7 @@ function EditEventContent() {
                   type="datetime-local"
                   value={formData.event_end_date}
                   onChange={(e) => setFormData({ ...formData, event_end_date: e.target.value })}
+                  className="custom-date-icon"
                 />
               </div>
             </div>
@@ -269,6 +324,7 @@ function EditEventContent() {
                   type="datetime-local"
                   value={formData.registration_start}
                   onChange={(e) => setFormData({ ...formData, registration_start: e.target.value })}
+                  className="custom-date-icon"
                 />
               </div>
               <div className="space-y-2">
@@ -278,6 +334,7 @@ function EditEventContent() {
                   type="datetime-local"
                   value={formData.registration_end}
                   onChange={(e) => setFormData({ ...formData, registration_end: e.target.value })}
+                  className="custom-date-icon"
                 />
               </div>
             </div>
@@ -291,7 +348,7 @@ function EditEventContent() {
                 }
               />
               <Label htmlFor="is_active" className="font-normal">
-                Event is Active
+                Event is Active (Publicly Visible)
               </Label>
             </div>
 
@@ -327,7 +384,6 @@ function EditEventContent() {
             )}
 
             <div className="flex space-x-4 mb-4">
-              {/* --- START OF THEME CHANGE --- */}
               <Button
                 type="button"
                 variant={bannerMode === 'url' ? 'default' : 'outline'}
@@ -362,7 +418,7 @@ function EditEventContent() {
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${
-                  isDragActive ? 'border-brand-red bg-red-900/10' : 'border-gray-600' // CHANGED
+                  isDragActive ? 'border-brand-red bg-red-900/10' : 'border-gray-600'
                 }`}
               >
                 <input {...getInputProps()} />
@@ -370,13 +426,12 @@ function EditEventContent() {
                 {bannerFile ? (
                   <p className="text-sm">Selected: <strong>{bannerFile.name}</strong></p>
                 ) : (
-                  <p className="text-sm text-gray-400"> {/* CHANGED */}
+                  <p className="text-sm text-gray-400">
                     {isDragActive ? 'Drop here' : 'Drag & drop or click to select new image'}
                   </p>
                 )}
               </div>
             )}
-            {/* --- END OF THEME CHANGE --- */}
           </CardContent>
         </Card>
 
@@ -384,15 +439,13 @@ function EditEventContent() {
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
           </Button>
-          {/* --- START OF THEME CHANGE --- */}
           <Button
             type="submit"
-            className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity" // CHANGED
+            className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity"
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Updating...' : 'Update Event'}
           </Button>
-          {/* --- END OF THEME CHANGE --- */}
         </div>
       </form>
     </div>
