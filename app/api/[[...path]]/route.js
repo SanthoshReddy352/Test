@@ -144,7 +144,6 @@ export async function GET(request) {
       // --- End cleanup logic ---
 
 
-      // --- START OF FIX: Explicitly select 'created_by' AND the 'club' relation ---
       let query = supabase
         .from('events')
         .select(`
@@ -153,9 +152,7 @@ export async function GET(request) {
           club:created_by(club_name, club_logo_url)
         `)
         .order('created_at', { ascending: false })
-      // --- END OF FIX ---
 
-      // --- START OF FIX: Modified 'active' parameter logic ---
       // Filter by active status
       if (params.active === 'true') {
         // This parameter now *only* filters for publicly visible events
@@ -163,7 +160,6 @@ export async function GET(request) {
         // The frontend will handle filtering for completed/active.
         query = query.eq('is_active', true)
       }
-      // --- END OF FIX ---
 
       // Limit results
       if (params.limit) {
@@ -179,17 +175,14 @@ export async function GET(request) {
         )
       }
       
-      // --- START OF FIX: No longer need to map and remove fields ---
       return NextResponse.json(
         { success: true, events: data },
         { headers: corsHeaders }
       )
-      // --- END OF FIX ---
     }
 
     // GET /api/events/:id - Get single event
     if (segments[0] === 'events' && segments[1]) {
-      // --- START OF FIX: Explicitly select 'created_by' AND the 'club' relation ---
       const { data, error } = await supabase
         .from('events')
         .select(`
@@ -199,7 +192,6 @@ export async function GET(request) {
         `)
         .eq('id', segments[1])
         .single()
-      // --- END OF FIX ---
 
       if (error) {
         return NextResponse.json(
@@ -208,12 +200,10 @@ export async function GET(request) {
         )
       }
       
-      // --- START OF FIX: No longer need to destructure/rename ---
       return NextResponse.json(
         { success: true, event: data },
         { headers: corsHeaders }
       )
-      // --- END OF FIX ---
     }
     
     // GET /api/profile - Get current user profile
@@ -254,10 +244,6 @@ export async function GET(request) {
         )
     }
 
-    // ===================================================================
-    // --- CORRECTED ORDER ---
-    // ===================================================================
-
     // GET /api/participants/count - Get total participant count
     if (segments[0] === 'participants' && segments[1] === 'count') {
       const { count, error } = await supabase
@@ -289,7 +275,7 @@ export async function GET(request) {
         .from('participants')
         .select(`
           *,
-          event:events(id, title, created_by)
+          event:events(id, title, created_by, form_fields)
         `)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
@@ -392,11 +378,6 @@ export async function GET(request) {
         return NextResponse.json({ success: true, participants: data }, { headers: corsHeaders })
       }
     }
-    
-    // ===================================================================
-    // --- END OF CORRECTED ORDER ---
-    // ===================================================================
-
 
     // Default GET - Health check
     if (segments.length === 0) {
@@ -898,4 +879,4 @@ export async function DELETE(request) {
       { status: 500, headers: corsHeaders }
     )
   }
-} 
+}

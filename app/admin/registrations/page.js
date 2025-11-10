@@ -77,7 +77,6 @@ function AdminRegistrationsContent() {
     router.push(`/admin/registrations?filter=${newFilter}`, { scroll: false });
   }
 
-  // --- START OF FIX: Implemented fetchRegistrations ---
   const fetchRegistrations = async () => {
     setLoading(true);
     try {
@@ -103,9 +102,7 @@ function AdminRegistrationsContent() {
       setLoading(false);
     }
   }
-  // --- END OF FIX ---
 
-  // --- START OF FIX: Implemented handleApprove ---
   const handleApprove = async (participantId) => {
     if (processingId) return; // Prevent multiple clicks
     setProcessingId(participantId);
@@ -134,9 +131,7 @@ function AdminRegistrationsContent() {
       setProcessingId(null);
     }
   }
-  // --- END OF FIX ---
 
-  // --- START OF FIX: Implemented handleReject ---
   const handleReject = async (participantId) => {
     if (processingId) return; // Prevent multiple clicks
     setProcessingId(participantId);
@@ -165,7 +160,6 @@ function AdminRegistrationsContent() {
       setProcessingId(null);
     }
   }
-  // --- END OF FIX ---
 
   const getFilteredRegistrations = () => {
     if (filter === 'all') return registrations
@@ -178,19 +172,8 @@ function AdminRegistrationsContent() {
     return <PageLoadingSpinner />;
   }
 
-  // --- FORM FIELDS FIX: Find event responses ---
-  const getEventForRegistration = (reg) => {
-    if (!reg.event) return [];
-    
-    // We must find the *full* event object from the main list 
-    // because the 'pending' endpoint only returns a small part of it.
-    // NOTE: This is not efficient, but works with current API.
-    // A better API would return the form_fields with the pending participant.
-    
-    // For now, we will just display the raw JSON from `responses`
-    // as the `form_fields` are not available in the `/api/participants/pending` response.
-    return reg.responses || {};
-  }
+  // --- FORM FIELDS FIX: This function is no longer needed, logic is in the dialog ---
+  // const getEventForRegistration = (reg) => { ... }
   // --- END FORM FIELDS FIX ---
 
 
@@ -274,7 +257,6 @@ function AdminRegistrationsContent() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      {/* --- FIX: Use event.title --- */}
                       <CardTitle className="text-lg">{registration.event?.title || 'Event Title Missing'}</CardTitle>
                       <Badge
                         className={
@@ -379,12 +361,17 @@ function AdminRegistrationsContent() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
-            {/* --- START OF FIX: Display raw responses --- */}
-            {selectedRegistration && Object.entries(selectedRegistration.responses || {}).map(([key, value]) => {
+            
+            {/* --- START OF FIX: Iterate form_fields to maintain order and show labels --- */}
+            {selectedRegistration && selectedRegistration.event?.form_fields && selectedRegistration.event.form_fields.length > 0 ? (
+              selectedRegistration.event.form_fields.map((field) => {
+                const label = field.label;
+                const value = selectedRegistration.responses[field.id]; // Get value by ID
                 const isUrl = typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://'));
+                
                 return (
-                  <div key={key} className="border-l-2 border-brand-red pl-3">
-                    <p className="text-sm font-medium text-gray-100">{key}</p>
+                  <div key={field.id} className="border-l-2 border-brand-red pl-3">
+                    <p className="text-sm font-medium text-gray-100">{label}</p>
                     {isUrl ? (
                       <a
                         href={value}
@@ -402,12 +389,17 @@ function AdminRegistrationsContent() {
                   </div>
                 );
               })
-            }
+            ) : (
+              // Fallback if form_fields is missing or empty
+              <p className="text-gray-500">
+                No custom form fields were found for this event. Raw data:
+                <pre className="text-xs mt-2 bg-gray-900 p-2 rounded">
+                  {JSON.stringify(selectedRegistration?.responses, null, 2)}
+                </pre>
+              </p>
+            )}
             {/* --- END OF FIX --- */}
             
-            {selectedRegistration && (!selectedRegistration.responses || Object.keys(selectedRegistration.responses).length === 0) && (
-               <p className="text-gray-500">No responses found for this registration.</p>
-            )}
           </div>
         </DialogContent>
       </Dialog>

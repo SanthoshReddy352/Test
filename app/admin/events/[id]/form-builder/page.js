@@ -21,7 +21,9 @@ function FormBuilderContent() {
     if (params.id) {
       fetchEvent()
     }
+  // --- START OF FIX: Add params.id to dependency array ---
   }, [params.id])
+  // --- END OF FIX ---
 
   const fetchEvent = async () => {
     try {
@@ -39,7 +41,6 @@ function FormBuilderContent() {
 
   const handleSave = async (fields) => {
     try {
-      // --- START OF FIX ---
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session) {
@@ -47,7 +48,6 @@ function FormBuilderContent() {
         // Re-throw error to be caught by FormBuilder's catch block
         throw new Error(sessionError?.message || "User not authenticated");
       }
-      // --- END OF FIX ---
 
       const response = await fetch(`/api/events/${params.id}`, {
         method: 'PUT',
@@ -130,10 +130,13 @@ function FormBuilderContent() {
         <p className="text-gray-400">for {event.title}</p>
       </div>
 
+      {/* --- START OF FIX: Pass eventId to FormBuilder --- */}
       <FormBuilder
         initialFields={event.form_fields || []}
         onSave={handleSave}
+        eventId={event.id} 
       />
+      {/* --- END OF FIX --- */}
     </div>
   )
 }
