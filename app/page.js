@@ -64,9 +64,9 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-5xl font-bold mb-6">
-              Welcome to EventX {/* CHANGED */}
+              <GradientText>Welcome to EventX</GradientText>
             </h1>
-            <p className="text-xl mb-8 text-gray-200"> {/* CHANGED */}
+            <p className="text-xl mb-8 text-white/90">
               Your central hub for hackathons, workshops, and tech events
               from every club on campus.
             </p>
