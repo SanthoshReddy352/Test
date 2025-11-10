@@ -25,6 +25,7 @@ function ClubProfileContent() {
   const [initialLogoUrl, setInitialLogoUrl] = useState('')
 
   // Fetch existing profile data
+  // --- START OF FIX: Depend on user.id ---
   const fetchProfile = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -48,7 +49,8 @@ function ClubProfileContent() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]); // Depend on user.id
+  // --- END OF FIX ---
 
   useEffect(() => {
     fetchProfile();

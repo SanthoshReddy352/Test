@@ -23,10 +23,13 @@ function ParticipantsContent() {
   const { user, isSuperAdmin, loading: authLoading } = useAuth() 
 
   useEffect(() => {
+    // --- START OF FIX: Depend on user.id, not the user object ---
     if (params.eventId && user) { 
       fetchData()
     }
-  }, [params.eventId, user]) 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.eventId, user?.id]) 
+  // --- END OF FIX ---
 
   const fetchData = async () => {
     try {

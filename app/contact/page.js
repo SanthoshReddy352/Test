@@ -22,6 +22,7 @@ export default function ContactPage() {
   const { user, isAdmin, loading } = useAuth()
   const router = useRouter()
 
+  // --- START OF FIX: Depend on user.id ---
   useEffect(() => {
     if (!loading) {
       // If auth is loaded, check conditions
@@ -30,7 +31,8 @@ export default function ContactPage() {
         router.push('/') // Redirect to home page
       }
     }
-  }, [user, isAdmin, loading, router])
+  }, [user?.id, isAdmin, loading, router])
+  // --- END OF FIX ---
 
   const handleSubmit = async (e) => {
     e.preventDefault()

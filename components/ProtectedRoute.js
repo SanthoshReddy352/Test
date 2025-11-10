@@ -10,6 +10,7 @@ export default function ProtectedRoute({ children }) {
   // Get auth state directly from context
   const { user, isAdmin, loading } = useAuth() 
 
+  // --- START OF FIX: Depend on user.id ---
   useEffect(() => {
     // This check runs *after* the context is loaded
     if (!loading) {
@@ -18,7 +19,8 @@ export default function ProtectedRoute({ children }) {
         router.push('/admin/login')
       }
     }
-  }, [user, isAdmin, loading, router])
+  }, [user?.id, isAdmin, loading, router])
+  // --- END OF FIX ---
 
   // While context is loading, show a spinner
   if (loading) {

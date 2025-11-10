@@ -19,12 +19,13 @@ function AdminEventsContent() {
   const { user, isSuperAdmin } = useAuth() 
 
   useEffect(() => {
-    // --- START OF FIX: Ensure user is loaded before fetching ---
+    // --- START OF FIX: Depend on user.id, not the user object ---
     if (user) {
       fetchEvents()
     }
-    // --- END OF FIX ---
-  }, [user, isSuperAdmin]) // Add isSuperAdmin to dependency array
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isSuperAdmin]) // Add isSuperAdmin to dependency array
+  // --- END OF FIX ---
 
   const fetchEvents = async () => {
     try {

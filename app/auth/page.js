@@ -18,7 +18,9 @@ export default function ParticipantAuthPage() {
   const redirectEventId = searchParams.get('redirect')
   const finalRedirect = redirectEventId ? `/events/${redirectEventId}` : '/events'; 
 
-  const { user } = useAuth() // Get user from context
+  // --- START OF FIX: Get authLoading from context ---
+  const { user, loading: authLoading } = useAuth() // Get user and authLoading from context
+  // --- END OF FIX ---
 
   const [loading, setLoading] = useState(false)
   // Session loading is now based on the context's loading state
@@ -34,16 +36,20 @@ export default function ParticipantAuthPage() {
   const [resetMessage, setResetMessage] = useState('')
   const [isResetting, setIsResetting] = useState(false)
 
+  // --- START OF FIX: Depend on user.id and authLoading ---
   useEffect(() => {
-    // Use the user state from context to check session
-    if (user) {
-        // User is already logged in, send them to their destination
-        router.replace(finalRedirect)
-    } else {
-        // User is not logged in, show the login form
-        setSessionLoading(false)
+    // Wait until auth context is no longer loading
+    if (!authLoading) {
+      if (user) {
+          // User is already logged in, send them to their destination
+          router.replace(finalRedirect)
+      } else {
+          // User is not logged in, show the login form
+          setSessionLoading(false)
+      }
     }
-  }, [user, router, finalRedirect])
+  }, [user?.id, authLoading, router, finalRedirect])
+  // --- END OF FIX ---
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -120,7 +126,7 @@ export default function ParticipantAuthPage() {
   }
 
   
-  if (sessionLoading) {
+  if (sessionLoading || authLoading) { // Also check authLoading
     return (
         <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">

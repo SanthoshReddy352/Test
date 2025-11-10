@@ -26,7 +26,10 @@ function AdminDashboardContent() {
     if (user) {
       fetchUserAndStats()
     }
-  }, [user, isSuperAdmin])
+  // --- START OF FIX: Depend on user.id, not the user object ---
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isSuperAdmin])
+  // --- END OF FIX ---
 
   const fetchUserAndStats = async () => {
     setLoading(true)
