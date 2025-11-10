@@ -44,8 +44,8 @@ function PageLoadingSpinner() {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="text-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div> {/* CHANGED */}
-        <p className="mt-4 text-gray-400">Loading registrations...</p> {/* CHANGED */}
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div>
+        <p className="mt-4 text-gray-400">Loading registrations...</p>
       </div>
     </div>
   );
@@ -77,17 +77,95 @@ function AdminRegistrationsContent() {
     router.push(`/admin/registrations?filter=${newFilter}`, { scroll: false });
   }
 
+  // --- START OF FIX: Implemented fetchRegistrations ---
   const fetchRegistrations = async () => {
-    // (Fetch logic remains unchanged)
-  }
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
 
+      // This endpoint is defined in your api/[[...path]]/route.js
+      const response = await fetch('/api/participants/pending', {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setRegistrations(data.participants);
+      } else {
+        throw new Error(data.error || "Failed to fetch registrations");
+      }
+    } catch (error) {
+      console.error("Error fetching registrations:", error);
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  // --- END OF FIX ---
+
+  // --- START OF FIX: Implemented handleApprove ---
   const handleApprove = async (participantId) => {
-    // (Approve logic remains unchanged)
-  }
+    if (processingId) return; // Prevent multiple clicks
+    setProcessingId(participantId);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
 
-  const handleReject = async (participantId) => {
-    // (Reject logic remains unchanged)
+      const response = await fetch(`/api/participants/${participantId}/approve`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Registration approved!');
+        fetchRegistrations(); // Refresh the list
+      } else {
+        throw new Error(data.error || "Failed to approve");
+      }
+    } catch (error) {
+      console.error("Error approving:", error);
+      alert(error.message);
+    } finally {
+      setProcessingId(null);
+    }
   }
+  // --- END OF FIX ---
+
+  // --- START OF FIX: Implemented handleReject ---
+  const handleReject = async (participantId) => {
+    if (processingId) return; // Prevent multiple clicks
+    setProcessingId(participantId);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch(`/api/participants/${participantId}/reject`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Registration rejected.');
+        fetchRegistrations(); // Refresh the list
+      } else {
+        throw new Error(data.error || "Failed to reject");
+      }
+    } catch (error) {
+      console.error("Error rejecting:", error);
+      alert(error.message);
+    } finally {
+      setProcessingId(null);
+    }
+  }
+  // --- END OF FIX ---
 
   const getFilteredRegistrations = () => {
     if (filter === 'all') return registrations
@@ -100,22 +178,37 @@ function AdminRegistrationsContent() {
     return <PageLoadingSpinner />;
   }
 
+  // --- FORM FIELDS FIX: Find event responses ---
+  const getEventForRegistration = (reg) => {
+    if (!reg.event) return [];
+    
+    // We must find the *full* event object from the main list 
+    // because the 'pending' endpoint only returns a small part of it.
+    // NOTE: This is not efficient, but works with current API.
+    // A better API would return the form_fields with the pending participant.
+    
+    // For now, we will just display the raw JSON from `responses`
+    // as the `form_fields` are not available in the `/api/participants/pending` response.
+    return reg.responses || {};
+  }
+  // --- END FORM FIELDS FIX ---
+
+
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2" data-testid="registrations-page-title">
           <GradientText>Review Registrations</GradientText>
         </h1>
-        <p className="text-gray-400">Approve or reject participant registrations for your events</p> {/* CHANGED */}
+        <p className="text-gray-400">Approve or reject participant registrations for your events</p>
       </div>
 
       {/* Filter Buttons */}
       <div className="flex flex-wrap gap-2 mb-6" data-testid="filter-buttons">
-        {/* --- START OF THEME CHANGE --- */}
         <Button
           variant={filter === 'pending' ? 'default' : 'outline'}
           onClick={() => handleSetFilter('pending')}
-          className={filter === 'pending' ? 'bg-brand-gradient text-white hover:opacity-90' : ''} // CHANGED
+          className={filter === 'pending' ? 'bg-brand-gradient text-white hover:opacity-90' : ''}
           data-testid="filter-pending"
         >
           <Clock size={16} className="mr-2" />
@@ -124,7 +217,7 @@ function AdminRegistrationsContent() {
         <Button
           variant={filter === 'approved' ? 'default' : 'outline'}
           onClick={() => handleSetFilter('approved')}
-          className={filter === 'approved' ? 'bg-brand-gradient text-white hover:opacity-90' : ''} // CHANGED
+          className={filter === 'approved' ? 'bg-brand-gradient text-white hover:opacity-90' : ''}
           data-testid="filter-approved"
         >
           <CheckCircle size={16} className="mr-2" />
@@ -133,7 +226,7 @@ function AdminRegistrationsContent() {
         <Button
           variant={filter === 'rejected' ? 'default' : 'outline'}
           onClick={() => handleSetFilter('rejected')}
-          className={filter === 'rejected' ? 'bg-brand-gradient text-white hover:opacity-90' : ''} // CHANGED
+          className={filter === 'rejected' ? 'bg-brand-gradient text-white hover:opacity-90' : ''}
           data-testid="filter-rejected"
         >
           <XCircle size={16} className="mr-2" />
@@ -142,13 +235,12 @@ function AdminRegistrationsContent() {
         <Button
           variant={filter === 'all' ? 'default' : 'outline'}
           onClick={() => handleSetFilter('all')}
-          className={filter === 'all' ? 'bg-brand-gradient text-white hover:opacity-90' : ''} // CHANGED
+          className={filter === 'all' ? 'bg-brand-gradient text-white hover:opacity-90' : ''}
           data-testid="filter-all"
         >
           <Filter size={16} className="mr-2" />
           All ({registrations.length})
         </Button>
-        {/* --- END OF THEME CHANGE --- */}
       </div>
 
       {/* Registrations List */}
@@ -161,7 +253,7 @@ function AdminRegistrationsContent() {
       {filteredRegistrations.length === 0 && !loading ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-gray-400">No {filter !== 'all' ? filter : ''} registrations found</p> {/* CHANGED */}
+            <p className="text-gray-400">No {filter !== 'all' ? filter : ''} registrations found</p>
             {filter !== 'all' && (
               <Button
                 variant="outline"
@@ -182,7 +274,8 @@ function AdminRegistrationsContent() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <CardTitle className="text-lg">{registration.event_title}</CardTitle>
+                      {/* --- FIX: Use event.title --- */}
+                      <CardTitle className="text-lg">{registration.event?.title || 'Event Title Missing'}</CardTitle>
                       <Badge
                         className={
                           registration.status === 'pending'
@@ -223,7 +316,7 @@ function AdminRegistrationsContent() {
                 
                 {/* Action Buttons */}
                 {registration.status === 'pending' && (
-                  <div className="flex gap-2 pt-4 border-t border-border"> {/* CHANGED */}
+                  <div className="flex gap-2 pt-4 border-t border-border">
                     <Button
                       className="bg-green-600 hover:bg-green-700"
                       onClick={() => handleApprove(registration.id)}
@@ -254,7 +347,7 @@ function AdminRegistrationsContent() {
                 )}
                 
                 {registration.status !== 'pending' && (
-                  <div className="pt-4 border-t border-border"> {/* CHANGED */}
+                  <div className="pt-4 border-t border-border">
                     <p className="text-sm text-gray-500">
                       {registration.status === 'approved' ? 'Approved' : 'Rejected'} on{' '}
                       {registration.reviewed_at 
@@ -269,7 +362,7 @@ function AdminRegistrationsContent() {
         </div>
       )}
 
-      {/* --- START OF THEME CHANGE --- */}
+      {/* Dialog for viewing details */}
       <Dialog 
         open={!!selectedRegistration} 
         onOpenChange={(isOpen) => {
@@ -282,53 +375,42 @@ function AdminRegistrationsContent() {
           <DialogHeader>
             <DialogTitle>Registration Details</DialogTitle>
             <DialogDescription>
-              Reviewing submission for <strong>{selectedRegistration?.event_title}</strong>.
+              Reviewing submission for <strong>{selectedRegistration?.event?.title}</strong>.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
-            {selectedRegistration && selectedRegistration.form_fields && selectedRegistration.form_fields.length > 0 ? (
-              selectedRegistration.form_fields.map((field) => {
-                const value = selectedRegistration.responses[field.id];
-                const isUrl = field.type === 'url' || (typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://')));
-
+            {/* --- START OF FIX: Display raw responses --- */}
+            {selectedRegistration && Object.entries(selectedRegistration.responses || {}).map(([key, value]) => {
+                const isUrl = typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://'));
                 return (
-                  <div key={field.id} className="border-l-2 border-brand-red pl-3"> {/* CHANGED */}
-                    <p className="text-sm font-medium text-gray-100"> {/* CHANGED */}
-                      {field.label}
-                    </p>
+                  <div key={key} className="border-l-2 border-brand-red pl-3">
+                    <p className="text-sm font-medium text-gray-100">{key}</p>
                     {isUrl ? (
                       <a
                         href={value}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-blue-400 hover:underline break-all" // CHANGED
+                        className="text-sm text-blue-400 hover:underline break-all"
                       >
-                        {value || 'N/A'}
+                        {value}
                       </a>
                     ) : (
-                      <p className="text-sm text-gray-300 whitespace-pre-wrap"> {/* CHANGED */}
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">
                         {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : (value !== null && value !== undefined && value !== '' ? String(value) : 'N/A')}
                       </p>
                     )}
                   </div>
                 );
               })
-            ) : (
-              selectedRegistration && Object.entries(selectedRegistration.responses || {}).map(([key, value]) => (
-                <div key={key} className="border-l-2 border-brand-red pl-3"> {/* CHANGED */}
-                  <p className="text-sm font-medium text-gray-100">{key}</p> {/* CHANGED */}
-                  <p className="text-sm text-gray-300 whitespace-pre-wrap">{String(value) || 'N/A'}</p> {/* CHANGED */}
-                </div>
-              ))
-            )}
+            }
+            {/* --- END OF FIX --- */}
             
-            {selectedRegistration && (!selectedRegistration.form_fields || selectedRegistration.form_fields.length === 0) && (!selectedRegistration.responses || Object.keys(selectedRegistration.responses).length === 0) && (
+            {selectedRegistration && (!selectedRegistration.responses || Object.keys(selectedRegistration.responses).length === 0) && (
                <p className="text-gray-500">No responses found for this registration.</p>
             )}
           </div>
         </DialogContent>
       </Dialog>
-      {/* --- END OF THEME CHANGE --- */}
     </div>
   )
 }
