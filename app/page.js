@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import EventCard from '@/components/EventCard'
+import GradientText from '@/components/GradientText'
 import { Calendar, Users, Trophy, Zap, Building } from 'lucide-react' // Import Building
 
 export default function Home() {
