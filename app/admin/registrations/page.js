@@ -61,26 +61,24 @@ function AdminRegistrationsContent() {
   const [registrations, setRegistrations] = useState([])
   const [loading, setLoading] = useState(true)
   
-  // --- START OF FIX: Read filter from URL, default to 'pending' ---
   const [filter, setFilter] = useState(searchParams.get('filter') || 'pending')
-  // --- END OF FIX ---
 
   const [processingId, setProcessingId] = useState(null)
   const [selectedRegistration, setSelectedRegistration] = useState(null)
 
+  // --- START OF FIX: Depend on user.id, not the user object ---
   useEffect(() => {
     if (user) {
       fetchRegistrations()
     }
-  }, [user, isSuperAdmin])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isSuperAdmin]) // This prevents re-fetch on tab focus
+  // --- END OF FIX ---
   
-  // --- START OF FIX: Update URL when filter changes ---
   const handleSetFilter = (newFilter) => {
     setFilter(newFilter);
-    // Update the URL query parameter without a full page reload
     router.push(`/admin/registrations?filter=${newFilter}`, { scroll: false });
   }
-  // --- END OF FIX ---
 
   const fetchRegistrations = async () => {
     setLoading(true)
@@ -251,12 +249,10 @@ function AdminRegistrationsContent() {
 
   const filteredRegistrations = getFilteredRegistrations()
 
-  // --- START OF FIX: Modified loading logic ---
   // Only show full-page loader if we have NO data yet.
   if (loading && registrations.length === 0) {
     return <PageLoadingSpinner />;
   }
-  // --- END OF FIX ---
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -269,9 +265,7 @@ function AdminRegistrationsContent() {
       <div className="flex flex-wrap gap-2 mb-6" data-testid="filter-buttons">
         <Button
           variant={filter === 'pending' ? 'default' : 'outline'}
-          // --- START OF FIX: Use new handler ---
           onClick={() => handleSetFilter('pending')}
-          // --- END OF FIX ---
           className={filter === 'pending' ? 'bg-[#00629B] hover:bg-[#004d7a]' : ''}
           data-testid="filter-pending"
         >
@@ -280,9 +274,7 @@ function AdminRegistrationsContent() {
         </Button>
         <Button
           variant={filter === 'approved' ? 'default' : 'outline'}
-          // --- START OF FIX: Use new handler ---
           onClick={() => handleSetFilter('approved')}
-          // --- END OF FIX ---
           className={filter === 'approved' ? 'bg-[#00629B] hover:bg-[#004d7a]' : ''}
           data-testid="filter-approved"
         >
@@ -291,9 +283,7 @@ function AdminRegistrationsContent() {
         </Button>
         <Button
           variant={filter === 'rejected' ? 'default' : 'outline'}
-          // --- START OF FIX: Use new handler ---
           onClick={() => handleSetFilter('rejected')}
-          // --- END OF FIX ---
           className={filter === 'rejected' ? 'bg-[#00629B] hover:bg-[#004d7a]' : ''}
           data-testid="filter-rejected"
         >
@@ -302,9 +292,7 @@ function AdminRegistrationsContent() {
         </Button>
         <Button
           variant={filter === 'all' ? 'default' : 'outline'}
-          // --- START OF FIX: Use new handler ---
           onClick={() => handleSetFilter('all')}
-          // --- END OF FIX ---
           className={filter === 'all' ? 'bg-[#00629B] hover:bg-[#004d7a]' : ''}
           data-testid="filter-all"
         >
@@ -314,13 +302,12 @@ function AdminRegistrationsContent() {
       </div>
 
       {/* Registrations List */}
-      {/* --- START OF FIX: Show inline loader --- */}
+      {/* This inline loader will no longer appear on tab focus */}
       {loading && (
         <div className="text-center py-4">
           <Loader2 className="mx-auto h-6 w-6 animate-spin text-gray-400" />
         </div>
       )}
-      {/* --- END OF FIX --- */}
       
       {filteredRegistrations.length === 0 && !loading ? (
         <Card>
@@ -330,9 +317,7 @@ function AdminRegistrationsContent() {
               <Button
                 variant="outline"
                 className="mt-4"
-                // --- START OF FIX: Use new handler ---
                 onClick={() => handleSetFilter('all')}
-                // --- END OF FIX ---
                 data-testid="show-all-button"
               >
                 Show All Registrations
@@ -341,9 +326,7 @@ function AdminRegistrationsContent() {
           </CardContent>
         </Card>
       ) : (
-        // --- START OF FIX: Add opacity rule ---
         <div className={`space-y-4 ${loading ? 'opacity-50' : ''}`}>
-        {/* --- END OF FIX --- */}
           {filteredRegistrations.map((registration) => (
             <Card key={registration.id} className="transition-shadow" data-testid={`registration-card-${registration.id}`}>
               <CardHeader>
