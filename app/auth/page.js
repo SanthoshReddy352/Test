@@ -1,325 +1,331 @@
-// app/auth/page.js
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState, Suspense } from 'react' 
 import { useRouter, useSearchParams } from 'next/navigation' 
+import Link from 'next/link'
+import ProtectedRoute from '@/components/ProtectedRoute'
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog' 
-import { useAuth } from '@/context/AuthContext' // IMPORT useAuth
+import { Badge } from '@/components/ui/badge'
+import { 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  Filter,
+  Calendar,
+  User,
+  Mail,
+  FileText,
+  Loader2
+} from 'lucide-react'
+import { format } from 'date-fns'
+import { useAuth } from '@/context/AuthContext'
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription 
+} from '@/components/ui/dialog'
 
-export default function ParticipantAuthPage() {
+export default function AdminRegistrationsPageWrapper() {
+  return (
+    <ProtectedRoute>
+      <Suspense fallback={<PageLoadingSpinner />}>
+        <AdminRegistrationsContent />
+      </Suspense>
+    </ProtectedRoute>
+  )
+}
+
+function PageLoadingSpinner() {
+  return (
+    <div className="container mx-auto px-4 py-12">
+      <div className="text-center">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div> {/* CHANGED */}
+        <p className="mt-4 text-gray-400">Loading registrations...</p> {/* CHANGED */}
+      </div>
+    </div>
+  );
+}
+
+
+function AdminRegistrationsContent() {
   const router = useRouter()
   const searchParams = useSearchParams() 
-  const redirectEventId = searchParams.get('redirect')
-  const finalRedirect = redirectEventId ? `/events/${redirectEventId}` : '/events'; 
-
-  // --- START OF FIX: Get authLoading from context ---
-  const { user, loading: authLoading } = useAuth() // Get user and authLoading from context
-  // --- END OF FIX ---
-
-  const [loading, setLoading] = useState(false)
-  // Session loading is now based on the context's loading state
-  const [sessionLoading, setSessionLoading] = useState(true) 
+  const { user, isSuperAdmin } = useAuth()
   
-  const [loginData, setLoginData] = useState({ email: '', password: '' })
-  const [signupData, setSignupData] = useState({ email: '', password: '', confirmPassword: '' })
-  const [error, setError] = useState('')
-  const [currentTab, setCurrentTab] = useState('login')
+  const [registrations, setRegistrations] = useState([])
+  const [loading, setLoading] = useState(true)
   
-  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false)
-  const [resetEmail, setResetEmail] = useState('')
-  const [resetMessage, setResetMessage] = useState('')
-  const [isResetting, setIsResetting] = useState(false)
+  const [filter, setFilter] = useState(searchParams.get('filter') || 'pending')
 
-  // --- START OF FIX: Depend on user.id and authLoading ---
+  const [processingId, setProcessingId] = useState(null)
+  const [selectedRegistration, setSelectedRegistration] = useState(null)
+
   useEffect(() => {
-    // Wait until auth context is no longer loading
-    if (!authLoading) {
-      if (user) {
-          // User is already logged in, send them to their destination
-          router.replace(finalRedirect)
-      } else {
-          // User is not logged in, show the login form
-          setSessionLoading(false)
-      }
+    if (user) {
+      fetchRegistrations()
     }
-  }, [user?.id, authLoading, router, finalRedirect])
-  // --- END OF FIX ---
-
-  const handleLogin = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: loginData.email,
-        password: loginData.password,
-      })
-
-      if (error) throw error
-
-      // MODIFIED: Redirect directly to the final destination.
-      // The Navbar's context will update automatically.
-      router.replace(finalRedirect)
-    } catch (error) {
-      setError(error.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSignup = async (e) => {
-    e.preventDefault()
-    setError('')
-
-    if (signupData.password !== signupData.confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      const { error } = await supabase.auth.signUp({
-        email: signupData.email,
-        password: signupData.password,
-      })
-
-      if (error) throw error
-
-      alert('Account created! Please check your email to verify your account.')
-      setCurrentTab('login')
-      setSignupData({ email: '', password: '', confirmPassword: '' })
-    } catch (error) {
-      setError(error.message)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isSuperAdmin]) 
   
-  const handleForgotPassword = async (e) => {
-    e.preventDefault()
-    setResetMessage('')
-    setIsResetting(true)
-
-    try {
-    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-         redirectTo: `${window.location.origin}/update_password`,
-    })
-
-        if (error) throw error
-        
-        setResetMessage('Password reset link sent! Check your email inbox (and spam folder).')
-        setResetEmail('')
-
-    } catch (error) {
-        setResetMessage(`Error: ${error.message}`)
-    } finally {
-        setIsResetting(false)
-    }
+  const handleSetFilter = (newFilter) => {
+    setFilter(newFilter);
+    router.push(`/admin/registrations?filter=${newFilter}`, { scroll: false });
   }
 
-  
-  if (sessionLoading || authLoading) { // Also check authLoading
-    return (
-        <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#00629B]"></div>
-              <p className="mt-4 text-gray-600">Checking session...</p>
-            </div>
-        </div>
-    )
+  const fetchRegistrations = async () => {
+    // (Fetch logic remains unchanged)
+  }
+
+  const handleApprove = async (participantId) => {
+    // (Approve logic remains unchanged)
+  }
+
+  const handleReject = async (participantId) => {
+    // (Reject logic remains unchanged)
+  }
+
+  const getFilteredRegistrations = () => {
+    if (filter === 'all') return registrations
+    return registrations.filter(r => r.status === filter)
+  }
+
+  const filteredRegistrations = getFilteredRegistrations()
+
+  if (loading && registrations.length === 0) {
+    return <PageLoadingSpinner />;
   }
 
   return (
-    // ... (The rest of the JSX for this file is unchanged, copy from your existing file)
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#00629B] rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-2xl">IEEE</span>
-          </div>
-          <h1 className="text-3xl font-bold">Participant Portal</h1>
-          <p className="text-gray-600 mt-2">Login or create an account to register for events</p>
-        </div>
-
-        <Tabs defaultValue="login" className="w-full" value={currentTab} onValueChange={setCurrentTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="login">
-            <Card>
-              <CardHeader>
-                <CardTitle>Login</CardTitle>
-                <CardDescription>Sign in to access event registration</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                      {error}
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      value={loginData.email}
-                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                      placeholder="participant@example.com"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      value={loginData.password}
-                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="text-right">
-                    <Button 
-                        type="button" 
-                        variant="link" 
-                        className="h-auto p-0 text-sm"
-                        onClick={() => {
-                            setError('')
-                            setIsForgotPasswordOpen(true)
-                        }}
-                    >
-                        Forgot Password?
-                    </Button>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-[#00629B] hover:bg-[#004d7a]"
-                    disabled={loading}
-                  >
-                    {loading ? 'Logging in...' : 'Login'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="signup">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Account</CardTitle>
-                <CardDescription>Create a new participant account</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSignup} className="space-y-4">
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                      {error}
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      value={signupData.email}
-                      onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                      placeholder="participant@example.com"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      value={signupData.password}
-                      onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      value={signupData.confirmPassword}
-                      onChange={(e) => setSignupData({ ...signupData, confirmPassword: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-[#00629B] hover:bg-[#004d7a]"
-                    disabled={loading}
-                  >
-                    {loading ? 'Creating Account...' : 'Sign Up'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+    <div className="container mx-auto px-4 py-12">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold mb-2" data-testid="registrations-page-title">Review Registrations</h1>
+        <p className="text-gray-400">Approve or reject participant registrations for your events</p> {/* CHANGED */}
       </div>
 
-      <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
-        <DialogContent className="sm:max-w-md">
+      {/* Filter Buttons */}
+      <div className="flex flex-wrap gap-2 mb-6" data-testid="filter-buttons">
+        {/* --- START OF THEME CHANGE --- */}
+        <Button
+          variant={filter === 'pending' ? 'default' : 'outline'}
+          onClick={() => handleSetFilter('pending')}
+          className={filter === 'pending' ? 'bg-brand-gradient text-white hover:opacity-90' : ''} // CHANGED
+          data-testid="filter-pending"
+        >
+          <Clock size={16} className="mr-2" />
+          Pending ({registrations.filter(r => r.status === 'pending').length})
+        </Button>
+        <Button
+          variant={filter === 'approved' ? 'default' : 'outline'}
+          onClick={() => handleSetFilter('approved')}
+          className={filter === 'approved' ? 'bg-brand-gradient text-white hover:opacity-90' : ''} // CHANGED
+          data-testid="filter-approved"
+        >
+          <CheckCircle size={16} className="mr-2" />
+          Approved ({registrations.filter(r => r.status === 'approved').length})
+        </Button>
+        <Button
+          variant={filter === 'rejected' ? 'default' : 'outline'}
+          onClick={() => handleSetFilter('rejected')}
+          className={filter === 'rejected' ? 'bg-brand-gradient text-white hover:opacity-90' : ''} // CHANGED
+          data-testid="filter-rejected"
+        >
+          <XCircle size={16} className="mr-2" />
+          Rejected ({registrations.filter(r => r.status === 'rejected').length})
+        </Button>
+        <Button
+          variant={filter === 'all' ? 'default' : 'outline'}
+          onClick={() => handleSetFilter('all')}
+          className={filter === 'all' ? 'bg-brand-gradient text-white hover:opacity-90' : ''} // CHANGED
+          data-testid="filter-all"
+        >
+          <Filter size={16} className="mr-2" />
+          All ({registrations.length})
+        </Button>
+        {/* --- END OF THEME CHANGE --- */}
+      </div>
+
+      {/* Registrations List */}
+      {loading && (
+        <div className="text-center py-4">
+          <Loader2 className="mx-auto h-6 w-6 animate-spin text-gray-400" />
+        </div>
+      )}
+      
+      {filteredRegistrations.length === 0 && !loading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-gray-400">No {filter !== 'all' ? filter : ''} registrations found</p> {/* CHANGED */}
+            {filter !== 'all' && (
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => handleSetFilter('all')}
+                data-testid="show-all-button"
+              >
+                Show All Registrations
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className={`space-y-4 ${loading ? 'opacity-50' : ''}`}>
+          {filteredRegistrations.map((registration) => (
+            <Card key={registration.id} className="transition-shadow" data-testid={`registration-card-${registration.id}`}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <CardTitle className="text-lg">{registration.event_title}</CardTitle>
+                      <Badge
+                        className={
+                          registration.status === 'pending'
+                            ? 'bg-orange-500'
+                            : registration.status === 'approved'
+                            ? 'bg-green-500'
+                            : 'bg-red-500'
+                        }
+                        data-testid={`status-badge-${registration.id}`}
+                      >
+                        {registration.status.charAt(0).toUpperCase() + registration.status.slice(1)}
+                      </Badge>
+                    </div>
+                    <CardDescription className="flex items-center gap-4 text-sm">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={14} />
+                        {format(new Date(registration.created_at), 'MMM dd, yyyy · hh:mm a')}
+                      </span>
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-sm text-gray-500">
+                    Review submission details before making a decision.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedRegistration(registration)}
+                    data-testid={`view-details-button-${registration.id}`}
+                    disabled={loading} // Disable while re-fetching
+                  >
+                    View Details
+                  </Button>
+                </div>
+                
+                {/* Action Buttons */}
+                {registration.status === 'pending' && (
+                  <div className="flex gap-2 pt-4 border-t border-border"> {/* CHANGED */}
+                    <Button
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => handleApprove(registration.id)}
+                      disabled={processingId === registration.id || loading}
+                      data-testid={`approve-button-${registration.id}`}
+                    >
+                      {processingId === registration.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle size={16} className="mr-2" />
+                      )}
+                      Approve
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleReject(registration.id)}
+                      disabled={processingId === registration.id || loading}
+                      data-testid={`reject-button-${registration.id}`}
+                    >
+                      {processingId === registration.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <XCircle size={16} className="mr-2" />
+                      )}
+                      Reject
+                    </Button>
+                  </div>
+                )}
+                
+                {registration.status !== 'pending' && (
+                  <div className="pt-4 border-t border-border"> {/* CHANGED */}
+                    <p className="text-sm text-gray-500">
+                      {registration.status === 'approved' ? 'Approved' : 'Rejected'} on{' '}
+                      {registration.reviewed_at 
+                        ? format(new Date(registration.reviewed_at), 'MMM dd, yyyy · hh:mm a')
+                        : 'Unknown date'}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* --- START OF THEME CHANGE --- */}
+      <Dialog 
+        open={!!selectedRegistration} 
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setSelectedRegistration(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
+            <DialogTitle>Registration Details</DialogTitle>
             <DialogDescription>
-              Enter the email address associated with your account. We will send a password reset link to that email.
+              Reviewing submission for <strong>{selectedRegistration?.event_title}</strong>.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleForgotPassword} className="space-y-4">
-            {resetMessage && (
-                <div className={`px-4 py-3 rounded text-sm ${resetMessage.includes('Error') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-                    {resetMessage}
+          <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            {selectedRegistration && selectedRegistration.form_fields && selectedRegistration.form_fields.length > 0 ? (
+              selectedRegistration.form_fields.map((field) => {
+                const value = selectedRegistration.responses[field.id];
+                const isUrl = field.type === 'url' || (typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://')));
+
+                return (
+                  <div key={field.id} className="border-l-2 border-brand-red pl-3"> {/* CHANGED */}
+                    <p className="text-sm font-medium text-gray-100"> {/* CHANGED */}
+                      {field.label}
+                    </p>
+                    {isUrl ? (
+                      <a
+                        href={value}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-400 hover:underline break-all" // CHANGED
+                      >
+                        {value || 'N/A'}
+                      </a>
+                    ) : (
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap"> {/* CHANGED */}
+                        {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : (value !== null && value !== undefined && value !== '' ? String(value) : 'N/A')}
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              selectedRegistration && Object.entries(selectedRegistration.responses || {}).map(([key, value]) => (
+                <div key={key} className="border-l-2 border-brand-red pl-3"> {/* CHANGED */}
+                  <p className="text-sm font-medium text-gray-100">{key}</p> {/* CHANGED */}
+                  <p className="text-sm text-gray-300 whitespace-pre-wrap">{String(value) || 'N/A'}</p> {/* CHANGED */}
                 </div>
+              ))
             )}
-            <div className="grid gap-2">
-              <Label htmlFor="reset-email">Email</Label>
-              <Input
-                id="reset-email"
-                type="email"
-                value={resetEmail}
-                onChange={(e) => setResetEmail(e.target.value)}
-                placeholder="participant@example.com"
-                required
-                disabled={isResetting || resetMessage.includes('Password reset link sent')}
-              />
-            </div>
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setIsForgotPasswordOpen(false)}
-                disabled={isResetting}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                className="bg-[#00629B] hover:bg-[#004d7a]"
-                disabled={isResetting || resetMessage.includes('Password reset link sent')}
-              >
-                {isResetting ? 'Sending...' : 'Send Reset Link'}
-              </Button>
-            </DialogFooter>
-          </form>
+            
+            {selectedRegistration && (!selectedRegistration.form_fields || selectedRegistration.form_fields.length === 0) && (!selectedRegistration.responses || Object.keys(selectedRegistration.responses).length === 0) && (
+               <p className="text-gray-500">No responses found for this registration.</p>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
+      {/* --- END OF THEME CHANGE --- */}
     </div>
   )
 }

@@ -26,35 +26,26 @@ function AdminDashboardContent() {
     if (user) {
       fetchUserAndStats()
     }
-  // --- START OF FIX: Depend on user.id, not the user object ---
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, isSuperAdmin])
-  // --- END OF FIX ---
 
   const fetchUserAndStats = async () => {
     setLoading(true)
     try {
-      // --- START OF FIX: Removed cleanup logic from here ---
-      // It is now correctly placed in the API route.
-      // --- END OF FIX ---
-
       const { data: { session } } = await supabase.auth.getSession()
       
-      // Fetch events
       const eventsRes = await fetch('/api/events')
       const eventsData = await eventsRes.json()
 
       if (eventsData.success) {
         const allEvents = eventsData.events
         
-        // Filter events based on role
         const myEvents = isSuperAdmin 
           ? allEvents 
           : allEvents.filter(e => e.created_by === user.id)
         
         const myEventIds = myEvents.map(e => e.id)
 
-        // --- Correct Active Events Count ---
         const now = new Date();
         const activeEventsList = myEvents.filter(e => {
           const eventEndDate = e.event_end_date ? new Date(e.event_end_date) : null;
@@ -62,7 +53,6 @@ function AdminDashboardContent() {
           return e.is_active && !isCompleted; 
         });
         
-        // Fetch participants for my events only
         let totalParticipants = 0
         let pendingApprovals = 0
         
@@ -107,8 +97,8 @@ function AdminDashboardContent() {
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#00629B]"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div> {/* CHANGED */}
+          <p className="mt-4 text-gray-400">Loading dashboard...</p> {/* CHANGED */}
         </div>
       </div>
     )
@@ -121,9 +111,9 @@ function AdminDashboardContent() {
           <h1 className="text-4xl font-bold" data-testid="admin-dashboard-title">
             {isSuperAdmin ? 'Super Admin Dashboard' : 'Admin Dashboard'}
           </h1>
-          <p className="text-gray-600 mt-2">Welcome back, {user?.email}</p>
+          <p className="text-gray-400 mt-2">Welcome back, {user?.email}</p> {/* CHANGED */}
           {isSuperAdmin && (
-            <p className="text-sm text-[#00629B] font-medium mt-1">You have full system access</p>
+            <p className="text-sm text-brand-orange font-medium mt-1">You have full system access</p>
           )}
         </div>
         <Button onClick={handleLogout} variant="outline" data-testid="logout-button">
@@ -133,20 +123,20 @@ function AdminDashboardContent() {
       </div>
 
       {stats.pendingApprovals > 0 && (
-        <Card className="mb-6 border-orange-500 bg-orange-50" data-testid="pending-approvals-alert">
+        <Card className="mb-6 border-orange-500 bg-orange-900/20" data-testid="pending-approvals-alert"> {/* CHANGED */}
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <AlertCircle className="text-orange-600" size={24} />
+                <AlertCircle className="text-orange-400" size={24} /> {/* CHANGED */}
                 <div>
-                  <p className="font-semibold text-orange-900">
+                  <p className="font-semibold text-orange-200"> {/* CHANGED */}
                     {stats.pendingApprovals} Registration{stats.pendingApprovals > 1 ? 's' : ''} Awaiting Approval
                   </p>
-                  <p className="text-sm text-orange-700">Review and approve participant registrations</p>
+                  <p className="text-sm text-orange-300">Review and approve participant registrations</p> {/* CHANGED */}
                 </div>
               </div>
               <Link href="/admin/registrations">
-                <Button className="bg-orange-600 hover:bg-orange-700" data-testid="review-registrations-button">
+                <Button className="bg-orange-500 hover:bg-orange-600" data-testid="review-registrations-button"> {/* CHANGED */}
                   Review Now
                 </Button>
               </Link>
@@ -161,11 +151,11 @@ function AdminDashboardContent() {
             <CardTitle className="text-sm font-medium">
               {isSuperAdmin ? 'All Events' : 'My Events'}
             </CardTitle>
-            <Calendar className="text-[#00629B]" size={20} />
+            <Calendar className="text-brand-orange" size={20} /> {/* CHANGED */}
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.myEvents}</div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-400 mt-1"> {/* CHANGED */}
               {isSuperAdmin ? 'System-wide' : 'Created by you'}
             </p>
           </CardContent>
@@ -174,33 +164,33 @@ function AdminDashboardContent() {
         <Card data-testid="stat-active-events">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Active Events</CardTitle>
-            <TrendingUp className="text-green-600" size={20} />
+            <TrendingUp className="text-green-500" size={20} /> {/* CHANGED */}
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.activeEvents}</div>
-            <p className="text-xs text-gray-500 mt-1">Currently running</p>
+            <p className="text-xs text-gray-400 mt-1">Currently running</p> {/* CHANGED */}
           </CardContent>
         </Card>
 
         <Card data-testid="stat-total-participants">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Registrations</CardTitle>
-            <Users className="text-purple-600" size={20} />
+            <Users className="text-purple-400" size={20} /> {/* CHANGED */}
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.totalParticipants}</div>
-            <p className="text-xs text-gray-500 mt-1">Approved participants</p>
+            <p className="text-xs text-gray-400 mt-1">Approved participants</p> {/* CHANGED */}
           </CardContent>
         </Card>
 
         <Card data-testid="stat-pending-approvals" className={stats.pendingApprovals > 0 ? 'border-orange-500' : ''}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
-            <AlertCircle className={stats.pendingApprovals > 0 ? 'text-orange-600' : 'text-gray-400'} size={20} />
+            <AlertCircle className={stats.pendingApprovals > 0 ? 'text-orange-400' : 'text-gray-400'} size={20} /> {/* CHANGED */}
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.pendingApprovals}</div>
-            <p className="text-xs text-gray-500 mt-1">Awaiting review</p>
+            <p className="text-xs text-gray-400 mt-1">Awaiting review</p> {/* CHANGED */}
           </CardContent>
         </Card>
       </div>
@@ -215,7 +205,7 @@ function AdminDashboardContent() {
           </CardHeader>
           <CardContent>
             <Link href="/admin/events">
-              <Button className="bg-[#00629B] hover:bg-[#004d7a]" data-testid="go-to-events-button">Go to Events</Button>
+              <Button className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity" data-testid="go-to-events-button">Go to Events</Button> {/* CHANGED */}
             </Link>
           </CardContent>
         </Card>
@@ -229,10 +219,10 @@ function AdminDashboardContent() {
           </CardHeader>
           <CardContent>
             <Link href="/admin/registrations">
-              <Button className="bg-[#00629B] hover:bg-[#004d7a]" data-testid="go-to-registrations-button">
+              <Button className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity" data-testid="go-to-registrations-button"> {/* CHANGED */}
                 Review Registrations
                 {stats.pendingApprovals > 0 && (
-                  <span className="ml-2 bg-orange-600 text-white text-xs px-2 py-1 rounded-full">
+                  <span className="ml-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full"> {/* CHANGED */}
                     {stats.pendingApprovals}
                   </span>
                 )}
@@ -249,7 +239,7 @@ function AdminDashboardContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-gray-400 mb-4"> {/* CHANGED */}
               Select an event from the events page to view its participants
             </p>
             <Link href="/admin/events">

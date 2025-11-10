@@ -10,23 +10,24 @@ export default function Footer() {
   // Show a loading/fallback footer if status is still loading
   if (adminLoading) {
     return (
-        <footer className="bg-gray-900 text-white mt-20">
+        <footer className="bg-background text-white mt-20"> {/* CHANGED */}
             <div className="container mx-auto px-4 py-12">
-                <div className="h-20 w-full bg-gray-800 rounded animate-pulse"></div>
+                <div className="h-20 w-full bg-card rounded animate-pulse"></div> {/* CHANGED */}
             </div>
         </footer>
     )
   }
 
   return (
-    <footer className="bg-gray-900 text-white mt-20">
+    <footer className="bg-background text-white mt-20 border-t border-border"> {/* CHANGED */}
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* About */}
           <div>
-            <h3 className="font-bold text-lg mb-4">IEEE Club</h3>
+            <h3 className="font-bold text-lg mb-4">EventX</h3> {/* CHANGED */}
             <p className="text-gray-400 text-sm">
-              Advancing technology for humanity. Join us in organizing world-class hackathons and tech events.
+              Your central hub for all college events. Discover, register, and manage
+              hackathons, workshops, and more.
             </p>
           </div>
 
@@ -97,8 +98,8 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-          <p>&copy; {new Date().getFullYear()} IEEE Club. All rights reserved.</p>
+        <div className="border-t border-border mt-8 pt-8 text-center text-sm text-gray-400"> {/* CHANGED */}
+          <p>&copy; {new Date().getFullYear()} EventX. All rights reserved.</p> {/* CHANGED */}
         </div>
       </div>
     </footer>

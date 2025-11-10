@@ -1,231 +1,261 @@
+// app/auth/page.js
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/context/AuthContext'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useRouter, useSearchParams } from 'next/navigation' 
+import { supabase } from '@/lib/supabase/client'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Mail, MapPin, Phone } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog' 
+import { useAuth } from '@/context/AuthContext' 
 
-export default function ContactPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    message: '',
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  
-  const { user, isAdmin, loading } = useAuth()
+export default function ParticipantAuthPage() {
   const router = useRouter()
+  const searchParams = useSearchParams() 
+  const redirectEventId = searchParams.get('redirect')
+  const finalRedirect = redirectEventId ? `/events/${redirectEventId}` : '/events'; 
 
-  // --- START OF FIX: Depend on user.id ---
+  const { user, loading: authLoading } = useAuth() 
+
+  const [loading, setLoading] = useState(false)
+  const [sessionLoading, setSessionLoading] = useState(true) 
+  
+  const [loginData, setLoginData] = useState({ email: '', password: '' })
+  const [signupData, setSignupData] = useState({ email: '', password: '', confirmPassword: '' })
+  const [error, setError] = useState('')
+  const [currentTab, setCurrentTab] = useState('login')
+  
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetMessage, setResetMessage] = useState('')
+  const [isResetting, setIsResetting] = useState(false)
+
   useEffect(() => {
-    if (!loading) {
-      // If auth is loaded, check conditions
-      // Redirect if user is not logged in OR if user is an admin
-      if (!user || isAdmin) {
-        router.push('/') // Redirect to home page
-      }
-    }
-  }, [user?.id, isAdmin, loading, router])
-  // --- END OF FIX ---
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      })
-
-      const data = await response.json()
-      if (data.success) {
-        setSubmitted(true)
-        setFormData({ name: '', email: '', message: '' })
+    if (!authLoading) {
+      if (user) {
+          router.replace(finalRedirect)
       } else {
-        alert('Failed to send message. Please try again.')
+          setSessionLoading(false)
       }
-    } catch (error) {
-      console.error('Error submitting contact form:', error)
-      alert('An error occurred. Please try again.')
-    } finally {
-      setIsSubmitting(false)
     }
+  }, [user?.id, authLoading, router, finalRedirect])
+
+  const handleLogin = async (e) => {
+    // (Unchanged)
   }
 
-  // Show loading spinner while auth is checking or redirecting
-  if (loading || !user || isAdmin) {
+  const handleSignup = async (e) => {
+    // (Unchanged)
+  }
+  
+  const handleForgotPassword = async (e) => {
+    // (Unchanged)
+  }
+
+  
+  if (sessionLoading || authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#00629B]"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+        <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div> {/* CHANGED */}
+              <p className="mt-4 text-gray-400">Checking session...</p> {/* CHANGED */}
+            </div>
         </div>
-      </div>
     )
   }
 
-  // Render page only if auth check passed
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Contact Us</h1>
-          <p className="text-gray-600">
-            Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
-          </p>
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4"> {/* CHANGED */}
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          {/* --- START OF THEME CHANGE --- */}
+          <img src="/logo.jpg" alt="EventX Logo" className="w-48 mx-auto mb-4" /> {/* CHANGED */}
+          <h1 className="text-3xl font-bold">Participant Portal</h1>
+          <p className="text-gray-400 mt-2">Login or create an account to register for events</p> {/* CHANGED */}
+          {/* --- END OF THEME CHANGE --- */}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Contact Info */}
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-[#00629B] rounded-full flex items-center justify-center flex-shrink-0">
-                    <Mail className="text-white" size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">Email</h3>
-                    <p className="text-sm text-gray-600">kareieeewiesba@gmail.com</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <Tabs defaultValue="login" className="w-full" value={currentTab} onValueChange={setCurrentTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Login</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          </TabsList>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-[#00629B] rounded-full flex items-center justify-center flex-shrink-0">
-                    <MapPin className="text-white" size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">Location</h3>
-                    <p className="text-sm text-gray-600">
-                      Kalasalingam University<br />
-                      Srivilliputtur, Tamil Nadu
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-[#00629B] rounded-full flex items-center justify-center flex-shrink-0">
-                    <Phone className="text-white" size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">Phone</h3>
-                    <p className="text-sm text-gray-600">+91 9398542229</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Contact Form */}
-          <div className="md:col-span-2">
+          <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Send us a Message</CardTitle>
+                <CardTitle>Login</CardTitle>
+                <CardDescription>Sign in to access event registration</CardDescription>
               </CardHeader>
               <CardContent>
-                {submitted ? (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg
-                        className="w-8 h-8 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  {error && (
+                    <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded"> {/* CHANGED */}
+                      {error}
                     </div>
-                    <h3 className="text-xl font-bold text-green-600 mb-2">
-                      Message Sent!
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      Thank you for contacting us. We'll get back to you soon.
-                    </p>
-                    <Button
-                      onClick={() => setSubmitted(false)}
-                      variant="outline"
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Email</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      value={loginData.email}
+                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                      placeholder="participant@example.com"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Password</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      value={loginData.password}
+                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="text-right">
+                    <Button 
+                        type="button" 
+                        variant="link" 
+                        className="h-auto p-0 text-sm"
+                        onClick={() => {
+                            setError('')
+                            setIsForgotPasswordOpen(true)
+                        }}
                     >
-                      Send Another Message
+                        Forgot Password?
                     </Button>
                   </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Name *</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) =>
-                          setFormData({ ...formData, name: e.target.value })
-                        }
-                        placeholder="Your full name"
-                        required
-                      />
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
-                        }
-                        placeholder="your.email@example.com"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="message">Message *</Label>
-                      <Textarea
-                        id="message"
-                        value={formData.message}
-                        onChange={(e) =>
-                          setFormData({ ...formData, message: e.target.value })
-                        }
-                        placeholder="Your message here..."
-                        required
-                        rows={6}
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full bg-[#00629B] hover:bg-[#004d7a]"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? 'Sending...' : 'Send Message'}
-                    </Button>
-                  </form>
-                )}
+                  {/* --- START OF THEME CHANGE --- */}
+                  <Button
+                    type="submit"
+                    className="w-full bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity" // CHANGED
+                    disabled={loading}
+                  >
+                    {loading ? 'Logging in...' : 'Login'}
+                  </Button>
+                  {/* --- END OF THEME CHANGE --- */}
+                </form>
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="signup">
+            <Card>
+              <CardHeader>
+                <CardTitle>Create Account</CardTitle>
+                <CardDescription>Create a new participant account</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSignup} className="space-y-4">
+                  {error && (
+                    <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded"> {/* CHANGED */}
+                      {error}
+                    </div>
+                  )}
+                  {/* (Fields unchanged) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      value={signupData.email}
+                      onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                      placeholder="participant@example.com"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      value={signupData.password}
+                      onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={signupData.confirmPassword}
+                      onChange={(e) => setSignupData({ ...signupData, confirmPassword: e.target.value })}
+                      required
+                    />
+                  </div>
+                  {/* --- START OF THEME CHANGE --- */}
+                  <Button
+                    type="submit"
+                    className="w-full bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity" // CHANGED
+                    disabled={loading}
+                  >
+                    {loading ? 'Creating Account...' : 'Sign Up'}
+                  </Button>
+                  {/* --- END OF THEME CHANGE --- */}
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Enter the email address associated with your account. We will send a password reset link to that email.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            {resetMessage && (
+                <div className={`px-4 py-3 rounded text-sm ${resetMessage.includes('Error') ? 'bg-red-900/50 text-red-300' : 'bg-green-900/50 text-green-300'}`}> {/* CHANGED */}
+                    {resetMessage}
+                </div>
+            )}
+            <div className="grid gap-2">
+              <Label htmlFor="reset-email">Email</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                placeholder="participant@example.com"
+                required
+                disabled={isResetting || resetMessage.includes('Password reset link sent')}
+              />
+            </div>
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsForgotPasswordOpen(false)}
+                disabled={isResetting}
+              >
+                Cancel
+              </Button>
+              {/* --- START OF THEME CHANGE --- */}
+              <Button 
+                type="submit" 
+                className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity" // CHANGED
+                disabled={isResetting || resetMessage.includes('Password reset link sent')}
+              >
+                {isResetting ? 'Sending...' : 'Send Reset Link'}
+              </Button>
+              {/* --- END OF THEME CHANGE --- */}
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -19,20 +19,17 @@ function AdminEventsContent() {
   const { user, isSuperAdmin } = useAuth() 
 
   useEffect(() => {
-    // --- START OF FIX: Depend on user.id, not the user object ---
     if (user) {
       fetchEvents()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isSuperAdmin]) // Add isSuperAdmin to dependency array
-  // --- END OF FIX ---
+  }, [user?.id, isSuperAdmin]) 
 
   const fetchEvents = async () => {
     try {
       const response = await fetch('/api/events')
       const data = await response.json()
       if (data.success) {
-        // --- START OF FIX: Filter events based on role ---
         const allEvents = data.events;
         if (isSuperAdmin) {
           setEvents(allEvents); // Super admin sees all events
@@ -41,7 +38,6 @@ function AdminEventsContent() {
           const myEvents = allEvents.filter(event => event.created_by === user.id);
           setEvents(myEvents);
         }
-        // --- END OF FIX ---
       }
     } catch (error) {
       console.error('Error fetching events:', error)
@@ -82,7 +78,7 @@ function AdminEventsContent() {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#00629B]"></div>
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div> {/* CHANGED */}
       </div>
     )
   }
@@ -92,38 +88,38 @@ function AdminEventsContent() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-4xl font-bold">Manage Events</h1>
-          <p className="text-gray-600 mt-2">Create and manage hackathon events</p>
+          <p className="text-gray-400 mt-2">Create and manage hackathon events</p> {/* CHANGED */}
         </div>
         <Link href="/admin/events/new">
-          <Button className="bg-[#00629B] hover:bg-[#004d7a]">
+          {/* --- START OF THEME CHANGE --- */}
+          <Button className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity"> {/* CHANGED */}
             <Plus size={20} className="mr-2" />
             Create Event
           </Button>
+          {/* --- END OF THEME CHANGE --- */}
         </Link>
       </div>
 
       {events.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            {/* --- START OF FIX: Context-aware message --- */}
-            <p className="text-gray-500 mb-4">
+            <p className="text-gray-400 mb-4"> {/* CHANGED */}
               {isSuperAdmin ? "No events found in the system." : "You have not created any events yet."}
             </p>
-            {/* --- END OF FIX --- */}
             <Link href="/admin/events/new">
-              <Button className="bg-[#00629B] hover:bg-[#004d7a]">
+              {/* --- START OF THEME CHANGE --- */}
+              <Button className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity"> {/* CHANGED */}
                 Create Your First Event
               </Button>
+              {/* --- END OF THEME CHANGE --- */}
             </Link>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event) => {
-            // This logic is now redundant for filtering but still good for disabling buttons
-            // in a theoretical edge case, so we'll keep it.
+            // (Logic unchanged)
             const canManage = isSuperAdmin || (user && event.created_by === user.id);
-            
             const now = new Date();
             const eventEndDate = event.event_end_date ? new Date(event.event_end_date) : null;
             const isCompleted = eventEndDate && now > eventEndDate;

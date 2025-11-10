@@ -28,31 +28,25 @@ export default function AdminLoginPage() {
 
       if (loginError) throw loginError
 
-      // Check if the newly logged-in user is an admin
+      // (Auth logic remains unchanged)
       const user = data.user;
       
-      // MODIFIED: Select 'role'
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
-        .select('role') // Check for the role
+        .select('role') 
         .eq('user_id', user.id)
         .maybeSingle() 
 
-      // --- START OF FIX ---
-      // Simplified error handling
       if (adminError) {
           throw adminError; 
       }
-      // --- END OF FIX ---
 
-      // MODIFIED: Check if role is 'admin' or 'super_admin'
       const userRole = adminData?.role;
       const isAdmin = userRole === 'admin' || userRole === 'super_admin';
       
       if (isAdmin) {
           router.push('/admin')
       } else {
-          // Log out non-admin users immediately after they login
           await supabase.auth.signOut() 
           setError('Access Denied. This login is for administrators only.')
       }
@@ -65,14 +59,14 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4"> {/* CHANGED */}
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#00629B] rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-2xl">IEEE</span>
-          </div>
+          {/* --- START OF THEME CHANGE --- */}
+          <img src="/logo.jpg" alt="EventX Logo" className="w-48 mx-auto mb-4" /> {/* CHANGED */}
           <h1 className="text-3xl font-bold">Admin Portal</h1>
-          <p className="text-gray-600 mt-2">Manage events and participants. Contact a super-admin to get access.</p>
+          <p className="text-gray-400 mt-2">Manage events and participants. Contact a super-admin to get access.</p> {/* CHANGED */}
+          {/* --- END OF THEME CHANGE --- */}
         </div>
 
         {/* Keeping Tabs structure simple for single form */}
@@ -86,7 +80,7 @@ export default function AdminLoginPage() {
               <CardContent>
                 <form onSubmit={handleLogin} className="space-y-4">
                   {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                    <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded"> {/* CHANGED */}
                       {error}
                     </div>
                   )}
@@ -111,13 +105,15 @@ export default function AdminLoginPage() {
                       required
                     />
                   </div>
+                  {/* --- START OF THEME CHANGE --- */}
                   <Button
                     type="submit"
-                    className="w-full bg-[#00629B] hover:bg-[#004d7a]"
+                    className="w-full bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity" // CHANGED
                     disabled={loading}
                   >
                     {loading ? 'Logging in...' : 'Login'}
                   </Button>
+                  {/* --- END OF THEME CHANGE --- */}
                 </form>
               </CardContent>
             </Card>
