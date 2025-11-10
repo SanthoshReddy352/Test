@@ -100,8 +100,8 @@ export default function UpdatePasswordPage() {
     if (error) {
         return (
             <div className="text-center py-12">
-                <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
-                <p className="text-gray-600 mb-6">{error}</p>
+                <h2 className="text-2xl font-bold text-red-500 mb-4">Error</h2>
+                <p className="text-gray-400 mb-6">{error}</p>
                 <p className="text-sm text-gray-500 mb-4">If the link is recent, try resetting your password again from the login page.</p>
                 <Link href="/auth">
                     <Button variant="outline">Back to Login</Button>
@@ -135,7 +135,7 @@ export default function UpdatePasswordPage() {
             </div>
             <Button
                 type="submit"
-                className="w-full bg-[#00629B] hover:bg-[#004d7a]"
+                className="w-full bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity"
                 disabled={loading}
             >
                 {loading ? 'Updating...' : 'Set New Password'}
@@ -145,7 +145,7 @@ export default function UpdatePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4">
       <div className="w-full max-w-md">
         <Card>
           <CardHeader>
