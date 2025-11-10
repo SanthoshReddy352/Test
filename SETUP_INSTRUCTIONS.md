@@ -1,80 +1,101 @@
-# 🚨 IMPORTANT: Database Setup Required
+## 🚀 Setup & Installation
 
-## You MUST complete this setup before using the website!
+(See `SETUP_INSTRUCTIONS.md` for a more user-friendly guide)
 
-The application is fully built and ready, but you need to create the database tables in Supabase first.
-
-### Step 1: Open Supabase SQL Editor
-
-1. Go to https://supabase.com/dashboard
-2. Select your project
-3. Click on "SQL Editor" in the left sidebar
-
-### Step 2: Run the Database Setup Script
-
-1. Open the file `SUPABASE_SETUP.sql` (located in the root directory)
-2. Copy ALL the content from that file
-3. Paste it into the Supabase SQL Editor
-4. Click "RUN" button
-
-### Step 3: Verify Tables Created
-
-After running the script, go to "Table Editor" in Supabase and verify these tables exist:
-- ✅ events
-- ✅ participants
-- ✅ contact_submissions
-
-Also verify the storage bucket:
-- Go to "Storage" in Supabase
-- Check that "event-banners" bucket exists
-
-### Step 4: Create Your First Admin User
-
-1. Go to Supabase Dashboard → Authentication → Users
-2. Click "Add user" → "Create new user"
-3. Enter your email and password
-4. Click "Create user"
-
-**OR** you can use the signup feature at: http://localhost:3000/admin/login
-
-### Step 5: Start Using the App!
-
-Once the database is set up and you've created an admin user:
-
-1. Visit: http://localhost:3000
-2. Login as admin: http://localhost:3000/admin/login
-3. Start creating events!
+1.  **Clone, `yarn install`**
+2.  **Environment:** Create `.env.local` (see `.env.example`).
+3.  **Database:** Run `SUPABASE_SETUP.sql` in your Supabase SQL Editor.
+4.  **Admin User:** Create a user in Supabase Auth, then **manually add their UUID** to the `public.admin_users` table.
+    ```sql
+    INSERT INTO public.admin_users (user_id, role)
+    VALUES ('your-auth-user-id', 'super_admin');
+    ```
+5.  **Run:** `yarn dev`.
 
 ---
 
-## ⚠️ Common Issues
+## 🗄️ Database Schema
 
-### "Table does not exist" error
-- **Solution**: You haven't run the SQL script yet. Go back to Step 1.
+### Tables
 
-### "Row Level Security policy violation" error  
-- **Solution**: The SQL script includes RLS policies. Make sure you ran the ENTIRE script.
+#### `events`
+Stores hackathon/event information.
 
-### Can't upload images
-- **Solution**: Check that the "event-banners" storage bucket was created by the SQL script.
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| title | TEXT | Event name |
+| description | TEXT | Event details |
+| banner_url | TEXT | Banner image URL |
+| event_date | TIMESTAMPTZ | Event start |
+| event_end_date | TIMESTAMPTZ | Event end |
+| is_active | BOOLEAN | **Defaults to `false`**. Acts as "is_published". |
+| registration_open | BOOLEAN | Registration toggle |
+| registration_start | TIMESTAMPTZ | Registration opens |
+| registration_end | TIMESTAMPTZ | Registration closes |
+| form_fields | JSONB | Custom form schema |
+| created_by | UUID | Admin who created event |
+| created_at | TIMESTAMPTZ | Creation timestamp |
+| updated_at | TIMESTAMPTZ | Last update timestamp |
 
-### Can't login as admin
-- **Solution**: Create a user in Supabase Dashboard → Authentication → Users
+#### `participants`
+Stores event registrations.
 
----
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| event_id | UUID | FK to events |
+| user_id | UUID | FK to auth.users |
+| responses | JSONB | Form submission data (key is `field.id`) |
+| status | TEXT | pending/approved/rejected |
+| reviewed_by | UUID | Admin who reviewed |
+| reviewed_at | TIMESTAMPTZ | Review timestamp |
+| created_at | TIMESTAMPTZ | Registration timestamp |
 
-## 🎉 What You'll Be Able To Do
+#### `admin_users`
+Defines admin roles and club info.
 
-After setup:
-- ✅ Create unlimited events
-- ✅ Build custom registration forms (text, email, dropdown, etc.)
-- ✅ Accept registrations from participants
-- ✅ View all participants for each event
-- ✅ Export participant data to CSV
-- ✅ Upload event banners or use URLs
-- ✅ Toggle event visibility and registration status
-- ✅ Receive contact form submissions
+| Column | Type | Description |
+|--------|------|-------------|
+| user_id | UUID | PK, FK to auth.users |
+| role | TEXT | 'admin' or 'super_admin' |
+| club_name | TEXT | **NEW:** Club's public display name |
+| club_logo_url | TEXT | **NEW:** Public URL for club's logo |
+| created_at | TIMESTAMPTZ | Creation timestamp |
 
----
+#### `profiles`
+User profile information.
+...
 
-**Need help?** Check the README.md for detailed documentation!
+#### `contact_submissions`
+Contact form submissions.
+...
+
+### JSONB Schema Examples
+
+#### `form_fields` (in `events` table)
+```json
+[
+  {
+    "id": "field-1-uuid",
+    "type": "text",
+    "label": "Full Name",
+    "required": true
+  },
+  {
+    "id": "field-2-uuid",
+    "type": "dropdown",
+    "label": "Team Size",
+    "required": true,
+    "options": ["1-2", "3-4", "5+"]
+  }
+]
+responses (in participants table)
+Note: The keys in this JSON object must match the id from the form_fields array.
+
+JSON
+
+{
+  "field-1-uuid": "John Doe",
+  "field-2-uuid": "3-4"
+}

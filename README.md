@@ -1,11 +1,12 @@
-# IEEE Club Hackathon Website 🚀
+# EventX - College Event Platform 🚀
 
-A modern, full-featured website for managing IEEE Club hackathons and tech events with dynamic form builder, admin dashboard, and participant management.
+A modern, full-featured website for managing student club hackathons and tech events with dynamic form builder, admin dashboard, and participant management.
 
 ## 🌟 Features
 
 ### For Participants
 - 📅 Browse upcoming hackathons and events
+- 🏠 **Browse by Club** - Filter events by the club that posted them.
 - 📝 Register with custom dynamic forms per event
 - 🔔 **Registration Status Tracking** - View approval status (Pending/Approved/Rejected)
 - 📧 Email notifications for registration approval/rejection
@@ -15,29 +16,25 @@ A modern, full-featured website for managing IEEE Club hackathons and tech event
 ### For Admins
 - 🔐 Secure authentication (Supabase Auth)
 - 👥 **Role-based Access Control** - Admin vs Super Admin permissions
-- ✏️ Create/Edit/Delete events (own events only for Admins)
+- 🏢 **Club Profile Management** - Admins can update their club's name and logo, which appears on the homepage and event cards.
+- ✏️ **Draft/Publish Workflow** - Events are created as "drafts" (inactive) by default and must be manually "published" (set to active) to become visible to the public.
 - 🎨 **Dynamic Form Builder** - Create custom registration forms per event
   - Support for: text, email, number, URL, dropdown, checkbox, textarea, date fields
   - Field validation (required/optional)
-  - Forms stored as JSON schema
+  - **Field Reordering** with "Move Up/Down" buttons.
+  - **Auto-saving** to session storage to prevent data loss.
 - ✅ **Registration Approval Workflow**
-  - Review pending registrations
+  - Review pending registrations.
+  - **User-Friendly Details:** View participant submissions in a clean dialog that shows field labels in the correct order.
   - Approve or reject applications
   - Track approval history
 - 📊 **Enhanced Dashboard** - Role-specific analytics
-  - My Events count
-  - Pending approvals alert
-  - Total registrations
-  - Active events tracking
-- 📧 **Email Notifications** - Automated emails for:
-  - Admin notification on new registration
-  - Participant approval/rejection
+- 📧 **Email Notifications** - Automated emails for admin alerts and participant status changes.
 - 📥 Export participant data to CSV
 - 🖼️ Upload event banners (Supabase Storage) or use URLs
-- ⚡ Toggle event visibility and registration status
 
 ### For Super Admins
-- 🔓 Full system access - manage ALL events
+- 🔓 Full system access - manage ALL events and clubs
 - 👁️ View and approve registrations for any event
 - 📊 System-wide analytics and oversight
 
@@ -68,16 +65,102 @@ A modern, full-featured website for managing IEEE Club hackathons and tech event
 3. Go to SQL Editor (left sidebar)
 4. Copy the entire content of `SUPABASE_SETUP.sql` file
 5. Paste and run it in the SQL Editor
-6. This will create all necessary tables, policies, and storage buckets
+6. This will create all necessary tables, policies, and storage buckets (`event-banners`, `club-logos`).
 
 ### 2. Environment Variables
 
 Already configured in `.env.local`:
-```
-NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-key
-```
+### 3. Install & Run
+
+```bash
+# Install dependencies
+yarn install
+
+# Run development server
+yarn dev
+You're right, let's re-brand the platform to be "EventX" and remove all specific "IEEE" references.
+
+Here are the complete, updated files. You can copy and paste the entire content for each file.
+
+1. README.md
+I've updated the title, description, and footers to be generic for "EventX".
+
+Markdown
+
+# EventX - College Event Platform 🚀
+
+A modern, full-featured website for managing student club hackathons and tech events with dynamic form builder, admin dashboard, and participant management.
+
+## 🌟 Features
+
+### For Participants
+- 📅 Browse upcoming hackathons and events
+- 🏠 **Browse by Club** - Filter events by the club that posted them.
+- 📝 Register with custom dynamic forms per event
+- 🔔 **Registration Status Tracking** - View approval status (Pending/Approved/Rejected)
+- 📧 Email notifications for registration approval/rejection
+- 💬 Contact form to reach organizers
+- 📱 Fully responsive design
+
+### For Admins
+- 🔐 Secure authentication (Supabase Auth)
+- 👥 **Role-based Access Control** - Admin vs Super Admin permissions
+- 🏢 **Club Profile Management** - Admins can update their club's name and logo, which appears on the homepage and event cards.
+- ✏️ **Draft/Publish Workflow** - Events are created as "drafts" (inactive) by default and must be manually "published" (set to active) to become visible to the public.
+- 🎨 **Dynamic Form Builder** - Create custom registration forms per event
+  - Support for: text, email, number, URL, dropdown, checkbox, textarea, date fields
+  - Field validation (required/optional)
+  - **Field Reordering** with "Move Up/Down" buttons.
+  - **Auto-saving** to session storage to prevent data loss.
+- ✅ **Registration Approval Workflow**
+  - Review pending registrations.
+  - **User-Friendly Details:** View participant submissions in a clean dialog that shows field labels in the correct order.
+  - Approve or reject applications
+  - Track approval history
+- 📊 **Enhanced Dashboard** - Role-specific analytics
+- 📧 **Email Notifications** - Automated emails for admin alerts and participant status changes.
+- 📥 Export participant data to CSV
+- 🖼️ Upload event banners (Supabase Storage) or use URLs
+
+### For Super Admins
+- 🔓 Full system access - manage ALL events and clubs
+- 👁️ View and approve registrations for any event
+- 📊 System-wide analytics and oversight
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 14 (App Router), React 18
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **Backend**: Next.js API Routes
+- **Database**: Supabase (PostgreSQL)
+- **Auth**: Supabase Auth
+- **Storage**: Supabase Storage
+- **Hosting**: Vercel-ready
+
+## 📋 Prerequisites
+
+- Node.js 18+ and Yarn
+- Supabase account and project
+- (Already configured in this project)
+
+## 🚀 Quick Start
+
+### 1. Database Setup
+
+**IMPORTANT: Run this first!**
+
+1. Go to your Supabase Dashboard: https://supabase.com/dashboard
+2. Navigate to your project
+3. Go to SQL Editor (left sidebar)
+4. Copy the entire content of `SUPABASE_SETUP.sql` file
+5. Paste and run it in the SQL Editor
+6. This will create all necessary tables, policies, and storage buckets (`event-banners`, `club-logos`).
+
+### 2. Environment Variables
+
+Already configured in `.env.local`:
+NEXT_PUBLIC_SUPABASE_URL=your-project-url NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key SUPABASE_SERVICE_ROLE_KEY=your-service-key
+
 
 ### 3. Install & Run
 
@@ -87,39 +170,39 @@ yarn install
 
 # Run development server
 yarn dev
-```
-
 Visit: http://localhost:3000
 
-### 4. Create Admin Account
+4. Create Admin Account
+IMPORTANT: Create your first admin user
 
-**IMPORTANT: Create your first admin user**
+Go to your Supabase Dashboard → Authentication → Users
 
-1. Go to your Supabase Dashboard → Authentication → Users
-2. Click "Add user" → "Create new user"
-3. Enter email and password
-4. Click "Create user"
-5. This user can now login to the admin dashboard
+Click "Add user" → "Create new user"
 
-**OR** Use the signup feature on `/admin/login` page (if enabled)
+Enter email and password
 
-## 📁 Project Structure
+Click "Create user"
 
-```
+This user can now login to the admin dashboard at /admin/login.
+
+📁 Project Structure
 /app
 ├── app/
 │   ├── page.js                    # Home page
 │   ├── layout.js                  # Root layout
 │   ├── globals.css                # Global styles
+│   │
 │   ├── events/
 │   │   ├── page.js                # All events listing
 │   │   └── [id]/page.js           # Event detail + registration
+│   │
 │   ├── admin/
 │   │   ├── page.js                # Admin dashboard
 │   │   ├── login/page.js          # Admin login
+│   │   ├── club-profile/page.js   # NEW: Admin's club profile
 │   │   ├── events/
 │   │   │   ├── page.js            # Manage events
-│   │   │   ├── new/page.js        # Create new event
+│   │   │   ├── new/page.js        # Create event
 │   │   │   └── [id]/
 │   │   │       ├── page.js        # Edit event
 │   │   │       └── form-builder/page.js  # Form builder
@@ -142,186 +225,128 @@ Visit: http://localhost:3000
 │   └── utils.js                   # Utility functions
 └── SUPABASE_SETUP.sql             # Database schema
 
-```
-
-## 🎯 Key Features Explained
-
-### Dynamic Form Builder
-
+🎯 Key Features Explained
+Dynamic Form Builder
 Admins can create custom registration forms for each event:
 
-1. Go to Admin → Events → Click event → "Edit Form"
-2. Add fields: text, email, number, URL, dropdown, checkbox, textarea, date
-3. Set field properties (label, required, options for dropdown)
-4. Save - form is stored as JSON
-5. Participants see and fill the custom form when registering
+Go to Admin → Events → Click event → "Edit Form"
 
-**Form Schema Example:**
-```json
-[
-  {
-    "id": "field-1",
-    "type": "text",
-    "label": "Team Name",
-    "required": true
-  },
-  {
-    "type": "dropdown",
-    "label": "Team Size",
-    "options": ["1-2", "3-4", "5+"],
-    "required": true
-  }
-]
-```
+Add fields: text, email, number, URL, dropdown, checkbox, textarea, date
 
-### File Upload
+Set field properties (label, required, options for dropdown)
 
-Two modes for event banners:
-1. **Upload**: Direct file upload to Supabase Storage
-2. **URL**: Paste external image URL
+Reorder fields using the "Move Up" / "Move Down" buttons.
 
-### CSV Export
+Auto-Save: Your work is automatically saved to your browser session. If you refresh, the form will still be there.
 
-Export participant data for any event:
-- Click "Export CSV" on participants page
-- Downloads all responses in CSV format
-- Great for offline analysis
+Click "Save Form to Database" to make it final.
 
-## 🔒 Security
+Club Profile Management
+Normal admins (non-super-admins) can visit the "Club Profile" link in the navbar.
 
-- Row Level Security (RLS) enabled on all tables
-- Authenticated-only access to admin features
-- Public read for events
-- Service role key used only on server-side
-- CORS configured properly
+On this page, they can set their Club Name and Upload a Club Logo.
 
-## 🎨 Customization
+This information is then displayed on the homepage and on all EventCard components for events they create.
 
-### Colors (IEEE Brand)
+🔒 Security
+Row Level Security (RLS) enabled on all tables
 
-Edit `tailwind.config.js` to customize:
-```js
-colors: {
-  'ieee-blue': '#00629B',
-  'ieee-gold': '#FFD700',
-}
-```
+Authenticated-only access to admin features
 
-### Add More Field Types
+Public read for is_active events
 
-Edit `components/FormBuilder.js` and `components/DynamicForm.js` to add new field types.
+Service role key used only on server-side
 
-## 📊 Database Tables
+CORS configured properly
 
-### events
-- id, title, description, banner_url
-- event_date, is_active, registration_open
-- form_fields (JSONB) - stores custom form schema
-- created_at, updated_at
+📊 Database Tables
+events
+id, title, description, banner_url
 
-### participants
-- id, event_id (FK)
-- responses (JSONB) - stores form submission data
-- created_at
+event_date, is_active (defaults to false)
 
-### contact_submissions
-- id, name, email, message
-- created_at
+registration_open, form_fields (JSONB)
 
-## 🐛 Troubleshooting
+created_at, created_by (FK to auth.users)
 
-### "Relation does not exist" error
-- Make sure you ran `SUPABASE_SETUP.sql` in Supabase SQL Editor
+participants
+id, event_id (FK), user_id (FK)
 
-### Can't login as admin
-- Create user in Supabase Dashboard → Authentication → Users
+responses (JSONB) - stores form submission data
 
-### Images not uploading
-- Check storage bucket exists: Supabase Dashboard → Storage
-- Verify bucket name is `event-banners`
+status ('pending', 'approved', 'rejected')
 
-### API errors
-- Check `.env.local` has correct Supabase credentials
-- Restart dev server after env changes: `yarn dev`
+created_at, reviewed_by, reviewed_at
 
-## 🚀 Deployment
+admin_users
+user_id (PK, FK to auth.users), role ('admin', 'super_admin')
 
-### Vercel Deployment
+club_name (TEXT) - NEW
 
-1. Push to GitHub
-2. Import project in Vercel
-3. Add environment variables from `.env.local`
-4. Deploy!
+club_logo_url (TEXT) - NEW
 
-### Environment Variables for Production
-```
-NEXT_PUBLIC_SUPABASE_URL=your-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-key
-```
+contact_submissions
+id, name, email, message, created_at
 
-## 📝 API Endpoints
+profiles
+id (PK, FK to auth.users), name, phone_number
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/events` | GET | Get all events |
-| `/api/events` | POST | Create event (Admin) |
-| `/api/events/:id` | GET | Get single event |
-| `/api/events/:id` | PUT | Update event (Admin) |
-| `/api/events/:id` | DELETE | Delete event (Admin) |
-| `/api/participants` | POST | Register participant |
-| `/api/participants/:eventId` | GET | Get event participants (Admin) |
-| `/api/participants/pending` | GET | Get pending registrations (Admin) |
-| `/api/participants/count` | GET | Get total participant count |
-| `/api/participants/:id/approve` | PUT | Approve registration (Admin) |
-| `/api/participants/:id/reject` | PUT | Reject registration (Admin) |
-| `/api/profile` | GET | Get user profile |
-| `/api/profile` | PUT | Update user profile |
-| `/api/contact` | POST | Submit contact form |
+🐛 Troubleshooting
+"Relation does not exist" error
+Make sure you ran SUPABASE_SETUP.sql in Supabase SQL Editor
 
-For detailed API documentation, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
+Can't login as admin
+Create user in Supabase Dashboard → Authentication → Users
 
-## 🎓 IEEE Club Info
+Ensure the user's user_id is added to the admin_users table (this is not automatic).
 
-This website is designed for IEEE Student Branches to:
-- Host 24-hour hackathons
-- Manage tech workshops and competitions
-- Collect custom registration data
-- Build community engagement
+Images not uploading
+Check storage buckets exist: event-banners and club-logos.
 
-## 📞 Support
+🚀 Deployment
+Vercel Deployment
+Push to GitHub
 
-For issues or questions:
-1. Check the troubleshooting section
-2. Review Supabase dashboard for errors
-3. Check browser console for frontend errors
-4. Check API responses in Network tab
+Import project in Vercel
 
-## 📋 Recent Updates (v2.0)
+Add environment variables from .env.local
 
-### ✅ Implemented
-- ✅ **Registration Approval Workflow** - Admins review and approve/reject registrations
-- ✅ **Email Notifications** - Automated emails for approvals, rejections, and admin alerts
-- ✅ **Role-based Permissions** - Super Admin vs Admin access control
-- ✅ **Enhanced Dashboard** - Role-specific stats and pending approvals
-- ✅ **Registration Status Display** - Participants see their application status
-- ✅ **Comprehensive Documentation** - USER_GUIDE.md, ADMIN_GUIDE.md, DEVELOPER_GUIDE.md
+Deploy!
 
-## 🔄 Future Enhancements
+📝 API Endpoints
+Endpoint	Method	Description
+/api/clubs	GET	NEW: Get all clubs with profiles
+/api/events	GET	Get all events (add ?active=true for public)
+/api/events	POST	Create event (Admin)
+/api/events/:id	GET	Get single event
+/api/events/:id	PUT	Update event (Admin)
+/api/events/:id	DELETE	Delete event (Admin)
+/api/participants	POST	Register participant
+/api/participants/:eventId	GET	Get event participants (Admin)
+/api/participants/pending	GET	Get pending registrations (Admin)
+/api/participants/count	GET	Get total participant count
+/api/participants/:id/approve	PUT	Approve registration (Admin)
+/api/participants/:id/reject	PUT	Reject registration (Admin)
+/api/profile	GET	Get user profile
+/api/profile	PUT	Update user profile
+/api/contact	POST	Submit contact form
 
+Export to Sheets
+
+🔄 Future Enhancements
 Potential features for future releases:
-- [ ] Payment integration (Razorpay/Stripe)
-- [ ] Certificate generation
-- [ ] Results/leaderboard system
-- [ ] Team management
-- [ ] Multi-language support
-- [ ] Event check-in system
-- [ ] SMS notifications
 
-## 📄 License
+[ ] Payment integration (Razorpay/Stripe)
 
-MIT License - Feel free to use for your IEEE club!
+[ ] Certificate generation
 
----
+[ ] Results/leaderboard system
 
-Built with ❤️ for IEEE Student Branches
+[ ] Team management
+
+[ ] Event check-in system
+
+[ ] SMS notifications
+
+📄 License
+MIT License - Feel free to use for your club!
