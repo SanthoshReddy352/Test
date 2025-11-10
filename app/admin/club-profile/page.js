@@ -48,7 +48,7 @@ function ClubProfileContent() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id]); // Depend on user.id
 
   useEffect(() => {
     fetchProfile();
@@ -128,8 +128,8 @@ function ClubProfileContent() {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand-red" /> {/* CHANGED */}
-        <p className="mt-4 text-gray-400">Loading profile...</p> {/* CHANGED */}
+        <Loader2 className="mx-auto h-12 w-12 animate-spin text-brand-red" />
+        <p className="mt-4 text-gray-400">Loading profile...</p>
       </div>
     );
   }
@@ -181,7 +181,7 @@ function ClubProfileContent() {
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                  isDragActive ? 'border-brand-red bg-red-900/10' : 'border-gray-600' // CHANGED
+                  isDragActive ? 'border-brand-red bg-brand-red/10' : 'border-gray-600'
                 }`}
               >
                 <input {...getInputProps()} />
@@ -191,7 +191,7 @@ function ClubProfileContent() {
                     Selected: <strong>{logoFile.name}</strong>
                   </p>
                 ) : (
-                  <p className="text-sm text-gray-400"> {/* CHANGED */}
+                  <p className="text-sm text-gray-400">
                     {isDragActive
                       ? 'Drop the logo here'
                       : 'Drag & drop a logo, or click to select'}
@@ -203,7 +203,7 @@ function ClubProfileContent() {
             <div className="flex justify-end">
               <Button
                 type="submit"
-                className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity" // CHANGED
+                className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
