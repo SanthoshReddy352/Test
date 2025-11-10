@@ -127,7 +127,7 @@ function FormBuilderContent() {
 
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Build Registration Form</h1>
-        <p className="text-gray-600">for {event.title}</p>
+        <p className="text-gray-400">for {event.title}</p>
       </div>
 
       <FormBuilder
