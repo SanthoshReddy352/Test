@@ -67,17 +67,18 @@ export default function UpdatePasswordPage() {
       // Show an alert for immediate feedback
       alert("Password updated successfully! Redirecting to login.");
       
-      // Redirect to the login page
+      // Redirect to the login page. This will also clear the temporary session.
       router.push('/auth'); 
 
     } catch (error) {
       setError(error.message)
-      setIsSubmitting(false) // <-- FIX: Set isSubmitting false on error
+      setIsSubmitting(false) // <-- FIX: Set isSubmitting false ONLY on error
     }
   }
 
   const renderContent = () => {
-    if (loading) { // This state is now *only* for the initial check
+    // This state is now *only* for the initial check
+    if (loading) {
         return (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div>
