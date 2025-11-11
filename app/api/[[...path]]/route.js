@@ -587,10 +587,11 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const segments = getPathSegments(request)
-    const body = await request.json()
+    // const body = await request.json() // <-- MOVED
     
     // PUT /api/profile - Update current user profile
     if (segments[0] === 'profile') {
+        const body = await request.json() // <-- ADDED HERE
         const authHeader = request.headers.get('Authorization')
         if (!authHeader) {
              return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401, headers: corsHeaders })
@@ -631,6 +632,7 @@ export async function PUT(request) {
 
     // PUT /api/events/:id - Update event
     if (segments[0] === 'events' && segments[1]) {
+      const body = await request.json() // <-- ADDED HERE
       const eventId = segments[1]
       
       const { user, role, error: adminError } = await getAdminUser(request);
