@@ -14,7 +14,7 @@ export default function UpdatePasswordPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(true) // For initial link check
-  const [isSubmitting, setIsSubmitting] = useState(false) // <-- FIX: Added separate state for submission
+  const [isSubmitting, setIsSubmitting] = useState(false) // For form submission
   const [error, setError] = useState('')
   const [user, setUser] = useState(null)
 
@@ -55,24 +55,27 @@ export default function UpdatePasswordPage() {
       return
     }
 
-    setIsSubmitting(true) // <-- FIX: Use isSubmitting state
+    setIsSubmitting(true) 
 
     try {
       const { error } = await supabase.auth.updateUser({
         password: password,
       })
 
-      if (error) throw error
+      if (error) {
+        throw error // Go to catch block
+      }
 
-      // Show an alert for immediate feedback
-      alert("Password updated successfully! Redirecting to login.");
-      
-      // Redirect to the login page. This will also clear the temporary session.
+      // --- START OF FIX ---
+      // On success, redirect to the login page immediately.
+      // This will clear the temporary session and prompt the user to log in
+      // with their new password.
       router.push('/auth'); 
+      // --- END OF FIX ---
 
     } catch (error) {
       setError(error.message)
-      setIsSubmitting(false) // <-- FIX: Set isSubmitting false ONLY on error
+      setIsSubmitting(false) // Reset the button only if an error occurs
     }
   }
 
@@ -126,9 +129,9 @@ export default function UpdatePasswordPage() {
             <Button
                 type="submit"
                 className="w-full bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity"
-                disabled={isSubmitting} // <-- FIX: Disable button based on isSubmitting
+                disabled={isSubmitting} // Disable button based on isSubmitting
             >
-                {isSubmitting ? 'Updating...' : 'Set New Password'} {/* <-- FIX: Show correct text */}
+                {isSubmitting ? 'Updating...' : 'Set New Password'} {/* Show correct text */}
             </Button>
         </form>
     )
