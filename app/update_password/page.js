@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+// We are not using useRouter, we will use window.location
 import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
 export default function UpdatePasswordPage() {
-  const router = useRouter()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(true) // For initial link check
@@ -41,7 +40,8 @@ export default function UpdatePasswordPage() {
     checkSession()
   }, [])
 
-  const handlePasswordUpdate = async (e) => {
+  // --- START OF THE DEFINITIVE FIX ---
+  const handlePasswordUpdate = (e) => {
     e.preventDefault()
     setError('')
 
@@ -57,30 +57,29 @@ export default function UpdatePasswordPage() {
 
     setIsSubmitting(true) 
 
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: password,
+    // We do NOT await this. We use .then() to avoid the race condition
+    // with the onAuthStateChange listener.
+    supabase.auth.updateUser({ password: password })
+      .then(response => {
+        const { error } = response;
+        if (error) {
+          throw error; // Go to catch block
+        }
+        
+        // Success! The 200 OK was received.
+        // Now we force a redirect to the login page.
+        window.location.href = '/auth';
       })
-
-      if (error) {
-        throw error // Go to catch block
-      }
-
-      // --- START OF FIX ---
-      // On success, redirect to the login page immediately.
-      // This will clear the temporary session and prompt the user to log in
-      // with their new password.
-      router.push('/auth'); 
-      // --- END OF FIX ---
-
-    } catch (error) {
-      setError(error.message)
-      setIsSubmitting(false) // Reset the button only if an error occurs
-    }
+      .catch(error => {
+        // Handle any errors from the API call
+        setError(error.message)
+        setIsSubmitting(false) // Reset the button ONLY if an error occurs
+      });
   }
+  // --- END OF THE DEFINITIVE FIX ---
 
   const renderContent = () => {
-    // This state is now *only* for the initial check
+    // This state is *only* for the initial link check
     if (loading) {
         return (
             <div className="text-center py-12">
