@@ -39,7 +39,6 @@ function EditEventContent() {
   const params = useParams()
   const { id } = params // Get the event ID from the URL
 
-  // --- START OF DATA PERSISTENCE (1 of 6) ---
   const storageKey = `editEventFormData-${id}`;
   const bannerUrlStorageKey = `editEventBannerUrl-${id}`;
 
@@ -58,7 +57,7 @@ function EditEventContent() {
   const [formData, setFormData] = useState(() => {
     if (typeof window === 'undefined') return defaultFormState;
     const saved = window.sessionStorage.getItem(storageKey);
-    return saved ? JSON.parse(saved) : defaultFormS_tate;
+    return saved ? JSON.parse(saved) : defaultFormState;
   });
   
   const [bannerMode, setBannerMode] = useState('url')
@@ -67,12 +66,15 @@ function EditEventContent() {
     if (typeof window === 'undefined') return '';
     return window.sessionStorage.getItem(bannerUrlStorageKey) || '';
   });
-  // --- END OF DATA PERSISTENCE (1 of 6) ---
 
   const [bannerFile, setBannerFile] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true) // For fetching data
   
+  // --- START OF NEW PREVIEW CODE (1 of 3) ---
+  const [previewUrl, setPreviewUrl] = useState('');
+  // --- END OF NEW PREVIEW CODE (1 of 3) ---
+
   const { loading: authLoading } = useAuth()
 
   // --- MODIFICATION: Fetch existing event data ---
@@ -88,12 +90,10 @@ function EditEventContent() {
         if (data.success && data.event) {
           const event = data.event;
           
-          // --- START OF DATA PERSISTENCE (2 of 6) ---
-          // Check if data is already in storage (meaning user was editing)
           const savedData = window.sessionStorage.getItem(storageKey);
           
-          if (!savedData) {
-            // First load: populate from DB
+          if (!savedData) { 
+            const eventBannerUrl = event.banner_url || ''; // Get banner URL
             setFormData({
               title: event.title || '',
               description: event.description || '',
@@ -103,16 +103,28 @@ function EditEventContent() {
               registration_open: event.registration_open || false,
               registration_start: fromISOString(event.registration_start),
               registration_end: fromISOString(event.registration_end),
-              banner_url: event.banner_url || '',
+              banner_url: eventBannerUrl,
             });
-            setBannerUrl(event.banner_url || '');
-            if (event.banner_url) {
+            setBannerUrl(eventBannerUrl);
+            
+            // --- START OF NEW PREVIEW CODE (Modified) ---
+            setPreviewUrl(eventBannerUrl); // Set initial preview
+            // --- END OF NEW PREVIEW CODE (Modified) ---
+
+            if (eventBannerUrl) {
               setBannerMode('url');
             }
           }
-          // If savedData *does* exist, the useState initializer
-          // already loaded it, so we don't overwrite it.
-          // --- END OF DATA PERSISTENCE (2 of 6) ---
+          // --- START OF NEW PREVIEW CODE (Modified) ---
+          else {
+            // If there is saved data, check if we need to set preview from it
+            // This handles reloads while in 'url' mode
+            const savedBannerUrl = window.sessionStorage.getItem(bannerUrlStorageKey);
+            if (savedBannerUrl) {
+              setPreviewUrl(savedBannerUrl);
+            }
+          }
+          // --- END OF NEW PREVIEW CODE (Modified) ---
 
         } else {
           alert('Error: Could not find event data.');
@@ -130,7 +142,6 @@ function EditEventContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, router]);
 
-  // --- START OF DATA PERSISTENCE (3 of 6) ---
   // Save form data to session storage on change
   useEffect(() => {
     if (typeof window !== 'undefined' && !isLoading) { // Only save *after* initial load
@@ -138,7 +149,34 @@ function EditEventContent() {
       window.sessionStorage.setItem(bannerUrlStorageKey, bannerUrl);
     }
   }, [formData, bannerUrl, isLoading, storageKey, bannerUrlStorageKey]);
-  // --- END OF DATA PERSISTENCE (3 of 6) ---
+  
+  // --- START OF NEW PREVIEW CODE (2 of 3) ---
+  // Effect to update preview URL
+  useEffect(() => {
+    let objectUrl = null; // To keep track of the object URL for cleanup
+
+    if (bannerMode === 'url') {
+      setPreviewUrl(bannerUrl);
+    } else if (bannerMode === 'upload' && bannerFile) {
+      // Create a local URL for the selected file
+      objectUrl = URL.createObjectURL(bannerFile);
+      setPreviewUrl(objectUrl);
+    } else if (bannerMode === 'upload' && !bannerFile) {
+      // If in upload mode but no file is selected (e.g., after switching modes)
+      setPreviewUrl(''); // Clear preview
+    }
+    // Note: We don't clear it if bannerMode is 'url' and bannerUrl is empty,
+    // because it might just be loading. The logic above handles it.
+
+    // Cleanup function to revoke the object URL
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [bannerUrl, bannerFile, bannerMode]); // Re-run when these change
+  // --- END OF NEW PREVIEW CODE (2 of 3) ---
+
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 0) {
@@ -230,13 +268,10 @@ function EditEventContent() {
       if (data.success) {
         alert('Event updated successfully!')
         
-        // --- START OF DATA PERSISTENCE (4 of 6) ---
-        // Clear storage on success
         if (typeof window !== 'undefined') {
           window.sessionStorage.removeItem(storageKey);
           window.sessionStorage.removeItem(bannerUrlStorageKey);
         }
-        // --- END OF DATA PERSISTENCE (4 of 6) ---
 
         router.push('/admin/events')
       } else {
@@ -284,9 +319,7 @@ function EditEventContent() {
               <Input
                 id="title"
                 value={formData.title}
-                // --- START OF DATA PERSISTENCE (5 of 6) ---
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                // --- END OF DATA PERSISTENCE (5 of 6) ---
                 required
               />
             </div>
@@ -407,9 +440,7 @@ function EditEventContent() {
                 <Input
                   id="banner_url"
                   value={bannerUrl}
-                  // --- START OF DATA PERSISTENCE (6 of 6) ---
                   onChange={(e) => setBannerUrl(e.target.value)}
-                  // --- END OF DATA PERSISTENCE (6 of 6) ---
                   placeholder="https://example.com/banner.jpg"
                 />
               </div>
@@ -431,6 +462,22 @@ function EditEventContent() {
                 )}
               </div>
             )}
+
+            {/* --- START OF NEW PREVIEW CODE (3 of 3) --- */}
+            {previewUrl && (
+              <div className="mt-4">
+                <Label>Banner Preview</Label>
+                <div className="mt-2 aspect-video w-full overflow-hidden rounded-lg border bg-gray-900">
+                  <img
+                    src={previewUrl}
+                    alt="Event Banner Preview"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              </div>
+            )}
+            {/* --- END OF NEW PREVIEW CODE (3 of 3) --- */}
+
           </CardContent>
         </Card>
 

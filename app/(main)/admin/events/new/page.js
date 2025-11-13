@@ -31,15 +31,12 @@ const getCurrentDateTimeLocal = () => {
   }
 }
 
-// --- START OF FIX: Add storage keys ---
 const storageKey = 'newEventFormData';
 const bannerUrlStorageKey = 'newEventBannerUrl';
-// --- END OF FIX ---
 
 function NewEventContent() {
   const router = useRouter()
   
-  // --- START OF FIX: Load formData from session storage ---
   const [formData, setFormData] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedData = window.sessionStorage.getItem(storageKey);
@@ -63,28 +60,52 @@ function NewEventContent() {
   
   const [bannerMode, setBannerMode] = useState('url')
   
-  // Load bannerUrl from session storage
   const [bannerUrl, setBannerUrl] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.sessionStorage.getItem(bannerUrlStorageKey) || '';
     }
     return '';
   });
-  // --- END OF FIX ---
 
   const [bannerFile, setBannerFile] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
+  // --- START OF NEW PREVIEW CODE (1 of 3) ---
+  const [previewUrl, setPreviewUrl] = useState('');
+  // --- END OF NEW PREVIEW CODE (1 of 3) ---
+
   const { loading: authLoading } = useAuth()
 
-  // --- START OF FIX: Save form data to session storage on change ---
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.sessionStorage.setItem(storageKey, JSON.stringify(formData));
       window.sessionStorage.setItem(bannerUrlStorageKey, bannerUrl);
     }
   }, [formData, bannerUrl]);
-  // --- END OF FIX ---
+
+  // --- START OF NEW PREVIEW CODE (2 of 3) ---
+  // Effect to update preview URL
+  useEffect(() => {
+    let objectUrl = null; // To keep track of the object URL for cleanup
+
+    if (bannerMode === 'url') {
+      setPreviewUrl(bannerUrl);
+    } else if (bannerMode === 'upload' && bannerFile) {
+      // Create a local URL for the selected file
+      objectUrl = URL.createObjectURL(bannerFile);
+      setPreviewUrl(objectUrl);
+    } else {
+      setPreviewUrl(''); // Clear preview if no file or URL
+    }
+
+    // Cleanup function to revoke the object URL
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [bannerUrl, bannerFile, bannerMode]); // Re-run when these change
+  // --- END OF NEW PREVIEW CODE (2 of 3) ---
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 0) {
@@ -171,12 +192,10 @@ function NewEventContent() {
       if (data.success) {
         alert('Event created successfully! (Saved as draft)')
         
-        // --- START OF FIX: Clear storage on success ---
         if (typeof window !== 'undefined') {
           window.sessionStorage.removeItem(storageKey);
           window.sessionStorage.removeItem(bannerUrlStorageKey);
         }
-        // --- END OF FIX ---
 
         router.push('/admin/events')
       } else {
@@ -366,6 +385,22 @@ function NewEventContent() {
                 )}
               </div>
             )}
+
+            {/* --- START OF NEW PREVIEW CODE (3 of 3) --- */}
+            {previewUrl && (
+              <div className="mt-4">
+                <Label>Banner Preview</Label>
+                <div className="mt-2 aspect-video w-full overflow-hidden rounded-lg border bg-gray-900">
+                  <img
+                    src={previewUrl}
+                    alt="Event Banner Preview"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              </div>
+            )}
+            {/* --- END OF NEW PREVIEW CODE (3 of 3) --- */}
+
           </CardContent>
         </Card>
 
