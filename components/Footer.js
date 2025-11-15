@@ -36,34 +36,36 @@ export default function Footer() {
           </FadeInUp>
 
           {/* Quick Links */}
-          <div>
-            <h3 className="font-bold text-lg mb-4">Quick Links</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/" className="text-gray-400 hover:text-white transition-colors">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link href="/events" className="text-gray-400 hover:text-white transition-colors">
-                  Events
-                </Link>
-              </li>
-              {/* CONDITIONAL RENDERING: Show Contact only if logged-in non-admin */}
-              {user && !isAdmin && (
+          <FadeInUp delay={100}>
+            <div>
+              <h3 className="font-bold text-lg mb-4">Quick Links</h3>
+              <ul className="space-y-2 text-sm">
                 <li>
-                  <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">
-                    Contact Us
+                  <Link href="/" className="text-gray-400 hover:text-white transition-colors">
+                    Home
                   </Link>
                 </li>
-              )}
-              <li>
-                <Link href="/admin" className="text-gray-400 hover:text-white transition-colors">
-                  Admin Portal
-                </Link>
-              </li>
-            </ul>
-          </div>
+                <li>
+                  <Link href="/events" className="text-gray-400 hover:text-white transition-colors">
+                    Events
+                  </Link>
+                </li>
+                {/* CONDITIONAL RENDERING: Show Contact only if logged-in non-admin */}
+                {user && !isAdmin && (
+                  <li>
+                    <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">
+                      Contact Us
+                    </Link>
+                  </li>
+                )}
+                <li>
+                  <Link href="/admin" className="text-gray-400 hover:text-white transition-colors">
+                    Admin Portal
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </FadeInUp>
 
           {/* Contact Info */}
           {/* CONDITIONAL RENDERING: Show Contact Info only if logged-in non-admin */}
