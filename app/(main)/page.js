@@ -233,7 +233,7 @@ export default function Home() {
               {upcomingEvents.map((event) => (
                 <EventCard key={event.id} event={event} />
               ))}
-            </div>
+            </StaggerChildren>
           ) : (
             <Card>
               <CardContent className="py-12 text-center text-gray-500">
