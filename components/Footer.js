@@ -85,23 +85,25 @@ export default function Footer() {
           )}
 
           {/* Social Media */}
-          <div>
-            <h3 className="font-bold text-lg mb-4">Follow Us</h3>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Facebook size={24} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Twitter size={24} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Linkedin size={24} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Instagram size={24} />
-              </a>
+          <FadeInUp delay={300}>
+            <div>
+              <h3 className="font-bold text-lg mb-4">Follow Us</h3>
+              <div className="flex space-x-4">
+                <a href="#" className="text-gray-400 hover:text-white hover:scale-125 transition-all duration-300">
+                  <Facebook size={24} />
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white hover:scale-125 transition-all duration-300">
+                  <Twitter size={24} />
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white hover:scale-125 transition-all duration-300">
+                  <Linkedin size={24} />
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white hover:scale-125 transition-all duration-300">
+                  <Instagram size={24} />
+                </a>
+              </div>
             </div>
-          </div>
+          </FadeInUp>
         </div>
 
         {/* Bottom Bar */}
