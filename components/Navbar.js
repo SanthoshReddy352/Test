@@ -8,7 +8,7 @@ import { Menu, X, LogIn, LogOut, User, Building } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { useAuth } from '@/context/AuthContext'
-import { animate } from 'animejs'; 
+import anime from 'animejs';
 
 export default function Navbar() {
   const pathname = usePathname()
