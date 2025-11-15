@@ -18,6 +18,33 @@ export default function Navbar() {
   const { user, isAdmin, isSuperAdmin } = useAuth() 
 
   const isActive = (path) => pathname === path
+  
+  const navRef = useRef(null)
+  const logoRef = useRef(null)
+
+  // Navbar entrance animation
+  useEffect(() => {
+    if (navRef.current) {
+      anime({
+        targets: navRef.current,
+        translateY: [-100, 0],
+        opacity: [0, 1],
+        duration: 800,
+        easing: 'easeOutExpo'
+      })
+    }
+    
+    if (logoRef.current) {
+      anime({
+        targets: logoRef.current,
+        scale: [0.8, 1],
+        opacity: [0, 1],
+        duration: 600,
+        delay: 200,
+        easing: 'easeOutElastic(1, .8)'
+      })
+    }
+  }, [])
 
   // --- START OF FIX: Aggressive Logout ---
   const handleLogout = async () => {
