@@ -25,13 +25,15 @@ export default function Footer() {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* About */}
-          <div>
-            <h3 className="font-bold text-lg mb-4">EventX</h3> {/* CHANGED */}
-            <p className="text-gray-400 text-sm">
-              Your central hub for all college events. Discover, register, and manage
-              hackathons, workshops, and more.
-            </p>
-          </div>
+          <FadeInUp delay={0}>
+            <div>
+              <h3 className="font-bold text-lg mb-4">EventX</h3> {/* CHANGED */}
+              <p className="text-gray-400 text-sm">
+                Your central hub for all college events. Discover, register, and manage
+                hackathons, workshops, and more.
+              </p>
+            </div>
+          </FadeInUp>
 
           {/* Quick Links */}
           <div>
