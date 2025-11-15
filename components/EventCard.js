@@ -85,9 +85,36 @@ export default function EventCard({ event }) {
   // --- START OF MODIFICATION: Get club info from event prop ---
   const club = event.club;
   // --- END OF MODIFICATION ---
+  
+  const cardRef = useRef(null);
+
+  const handleMouseEnter = () => {
+    anime({
+      targets: cardRef.current,
+      scale: 1.03,
+      translateY: -8,
+      duration: 400,
+      easing: 'easeOutQuad'
+    });
+  };
+
+  const handleMouseLeave = () => {
+    anime({
+      targets: cardRef.current,
+      scale: 1,
+      translateY: 0,
+      duration: 400,
+      easing: 'easeOutQuad'
+    });
+  };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col">
+    <Card 
+      ref={cardRef}
+      className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Event Banner */}
       {/* --- START OF THEME CHANGE --- */}
       <div className="w-full h-48 bg-brand-gradient relative"> {/* CHANGED */}
