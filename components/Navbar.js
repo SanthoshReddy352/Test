@@ -5,9 +5,10 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Menu, X, LogIn, LogOut, User, Building } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase/client'
-import { useAuth } from '@/context/AuthContext' 
+import { useAuth } from '@/context/AuthContext'
+import anime from 'animejs' 
 
 export default function Navbar() {
   const pathname = usePathname()
