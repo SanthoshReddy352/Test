@@ -70,16 +70,18 @@ export default function Footer() {
           {/* Contact Info */}
           {/* CONDITIONAL RENDERING: Show Contact Info only if logged-in non-admin */}
           {user && !isAdmin && (
-            <div>
-              <h3 className="font-bold text-lg mb-4">Contact</h3>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li className="flex items-center space-x-2">
-                  <Mail size={16} />
-                  <span>gsreddy1182006@gmail.com</span>
-                </li>
-                <li><GradientText>EventX</GradientText></li>
-              </ul>
-            </div>
+            <FadeInUp delay={200}>
+              <div>
+                <h3 className="font-bold text-lg mb-4">Contact</h3>
+                <ul className="space-y-2 text-sm text-gray-400">
+                  <li className="flex items-center space-x-2">
+                    <Mail size={16} />
+                    <span>gsreddy1182006@gmail.com</span>
+                  </li>
+                  <li><GradientText>EventX</GradientText></li>
+                </ul>
+              </div>
+            </FadeInUp>
           )}
 
           {/* Social Media */}
