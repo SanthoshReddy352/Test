@@ -210,14 +210,18 @@ export default function Home() {
       {/* Upcoming Events (Unchanged) */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold">
-              <GradientText>Upcoming Events</GradientText>
-            </h2>
-            <Link href="/events">
-              <Button variant="outline">View All Events</Button>
-            </Link>
-          </div>
+          <FadeInUp>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-3xl font-bold">
+                <GradientText>Upcoming Events</GradientText>
+              </h2>
+              <MagneticButton>
+                <Link href="/events">
+                  <Button variant="outline">View All Events</Button>
+                </Link>
+              </MagneticButton>
+            </div>
+          </FadeInUp>
 
           {loading ? (
             <div className="text-center py-12">
@@ -225,7 +229,7 @@ export default function Home() {
               {/* CHANGED */}
             </div>
           ) : upcomingEvents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <StaggerChildren staggerDelay={150} animation="fadeUp" className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {upcomingEvents.map((event) => (
                 <EventCard key={event.id} event={event} />
               ))}
