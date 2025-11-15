@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, CheckCircle, XCircle, FileClock } from 'lucide-react'
 import { parseISO, format } from 'date-fns'; 
-import { formatInTimeZone } from 'date-fns-tz'; 
+import { formatInTimeZone } from 'date-fns-tz';
+import { useRef } from 'react';
+import anime from 'animejs'; 
 
 // Helper function to format date ranges (unchanged)
 const formatEventDate = (start, end, timeZone) => {
