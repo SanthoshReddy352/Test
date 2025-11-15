@@ -252,29 +252,39 @@ export default function Home() {
         {/* CHANGED */}
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-6">
-              <GradientText>About EventX</GradientText>
-            </h2>
-            <p className="text-gray-400 mb-4">
-              {" "}
-              {/* CHANGED */}
-              EventX is your college's central platform for discovering and
-              managing technical and non-technical events.
-            </p>
-            <p className="text-gray-400 mb-6">
-              {" "}
-              {/* CHANGED */}
-              Our mission is to bring all student-run clubs together, making it
-              easy for students to find opportunities and for clubs to manage
-              their participants.
-            </p>
-            <Link href="/events">
-              <Button className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity">
+            <FadeInUp>
+              <h2 className="text-3xl font-bold mb-6">
+                <GradientText>About EventX</GradientText>
+              </h2>
+            </FadeInUp>
+            <FadeInUp delay={200}>
+              <p className="text-gray-400 mb-4">
                 {" "}
                 {/* CHANGED */}
-                Join Our Next Event
-              </Button>
-            </Link>
+                EventX is your college's central platform for discovering and
+                managing technical and non-technical events.
+              </p>
+            </FadeInUp>
+            <FadeInUp delay={300}>
+              <p className="text-gray-400 mb-6">
+                {" "}
+                {/* CHANGED */}
+                Our mission is to bring all student-run clubs together, making it
+                easy for students to find opportunities and for clubs to manage
+                their participants.
+              </p>
+            </FadeInUp>
+            <FadeInUp delay={400}>
+              <MagneticButton>
+                <Link href="/events">
+                  <Button className="bg-brand-gradient text-white font-semibold hover:opacity-90 transition-opacity">
+                    {" "}
+                    {/* CHANGED */}
+                    Join Our Next Event
+                  </Button>
+                </Link>
+              </MagneticButton>
+            </FadeInUp>
           </div>
         </div>
       </section>
