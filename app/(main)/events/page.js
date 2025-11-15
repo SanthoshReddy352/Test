@@ -193,11 +193,11 @@ function EventsPage() {
       {loading ? (
         <LoadingSpinner />
       ) : filteredEvents.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <StaggerChildren staggerDelay={100} animation="fadeUp" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredEvents.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
-        </div>
+        </StaggerChildren>
       ) : (
         <Card>
           <CardContent className="py-12 text-center text-gray-500">
