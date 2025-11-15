@@ -157,9 +157,11 @@ export default function Home() {
         {" "}
         {/* CHANGED: bg-gray-50 to bg-card */}
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            <GradientText>Browse by Club</GradientText>
-          </h2>
+          <FadeInUp>
+            <h2 className="text-3xl font-bold text-center mb-12">
+              <GradientText>Browse by Club</GradientText>
+            </h2>
+          </FadeInUp>
           {loadingClubs ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-brand-red"></div>{" "}
@@ -168,7 +170,7 @@ export default function Home() {
               {/* CHANGED */}
             </div>
           ) : clubs.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6">
+            <StaggerChildren staggerDelay={80} animation="scale" className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6">
               {clubs.map((club) => (
                 <Link
                   href={`/events?club=${encodeURIComponent(club.club_name)}`}
