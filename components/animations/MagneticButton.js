@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { anime } from 'animejs';
+import anime from 'animejs';
 
 /**
  * MagneticButton - Button with magnetic hover effect

@@ -7,7 +7,7 @@ import { Calendar, CheckCircle, XCircle, FileClock } from 'lucide-react'
 import { parseISO, format } from 'date-fns'; 
 import { formatInTimeZone } from 'date-fns-tz';
 import { useRef } from 'react';
-import { anime } from 'animejs';
+import anime from 'animejs';
 
 // Helper function to format date ranges (unchanged)
 const formatEventDate = (start, end, timeZone) => {
