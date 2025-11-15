@@ -177,7 +177,7 @@ export default function Home() {
                   key={club.club_name}
                   className="group"
                 >
-                  <Card className="h-full hover:shadow-xl transition-shadow duration-300 bg-background hover:bg-zinc-900">
+                  <Card className="h-full hover:shadow-xl transition-all duration-300 bg-background hover:bg-zinc-900 hover:scale-105">
                     {" "}
                     {/* CHANGED */}
                     <CardContent className="pt-6 text-center flex flex-col items-center justify-center">
@@ -195,7 +195,7 @@ export default function Home() {
                   </Card>
                 </Link>
               ))}
-            </div>
+            </StaggerChildren>
           ) : (
             <Card>
               <CardContent className="py-12 text-center text-gray-500">
