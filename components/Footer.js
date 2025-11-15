@@ -4,6 +4,7 @@ import Link from 'next/link'
 import GradientText from "@/components/GradientText";
 import { Facebook, Twitter, Linkedin, Instagram, Mail } from 'lucide-react'
 import { useAdminStatus } from '@/hooks/use-admin-status'
+import FadeInUp from '@/components/animations/FadeInUp'
 
 export default function Footer() {
   const { user, isAdmin, loading: adminLoading } = useAdminStatus();
