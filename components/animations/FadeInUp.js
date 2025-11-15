@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import anime from 'animejs/lib/anime.es.js';
-
+import { anime } from 'animejs';
 /**
  * FadeInUp animation component
  * Fades in and slides up on mount or scroll
