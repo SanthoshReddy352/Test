@@ -9,7 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Search, X } from 'lucide-react' // Import X
 import { Button } from '@/components/ui/button' // Import Button
-import { parseISO } from 'date-fns' 
+import { parseISO } from 'date-fns'
+import FadeInUp from '@/components/animations/FadeInUp'
+import StaggerChildren from '@/components/animations/StaggerChildren' 
 
 // Wrap the main component in Suspense for useSearchParams
 export default function EventsPageWrapper() {
