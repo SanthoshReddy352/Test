@@ -79,12 +79,12 @@ export default function Navbar() {
   // --- END OF FIX ---
   
   return (
-    <nav className="bg-background border-b border-border shadow-sm sticky top-0 z-50"> 
+    <nav ref={navRef} className="bg-background border-b border-border shadow-sm sticky top-0 z-50" style={{ opacity: 0 }}> 
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-20"> 
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <img src="/logo.jpg" alt="EventX Logo" className="h-14 w-auto" /> 
+            <img ref={logoRef} src="/logo.jpg" alt="EventX Logo" className="h-14 w-auto" style={{ opacity: 0 }} /> 
           </Link>
 
           {/* Desktop Navigation */}
