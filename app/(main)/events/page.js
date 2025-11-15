@@ -176,7 +176,8 @@ function EventsPage() {
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+        </div>
+      </FadeInUp>
 
       {clubFilter && (
         <div className="mb-6 flex justify-start">
