@@ -144,15 +144,18 @@ function EventsPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-4">
-          <GradientText>All Events</GradientText>
-        </h1>
-        <p className="text-gray-400">Browse and register for our hackathons and tech events</p>
-      </div>
+      <FadeInUp>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-4">
+            <GradientText>All Events</GradientText>
+          </h1>
+          <p className="text-gray-400">Browse and register for our hackathons and tech events</p>
+        </div>
+      </FadeInUp>
 
       {/* Filters */}
-      <div className="mb-4 flex flex-col md:flex-row gap-4">
+      <FadeInUp delay={200}>
+        <div className="mb-4 flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 text-gray-400" size={20} />
           <Input
