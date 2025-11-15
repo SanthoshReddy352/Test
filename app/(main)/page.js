@@ -107,34 +107,46 @@ export default function Home() {
         {/* CHANGED */}
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-5xl font-bold mb-6">Welcome to EventX</h1>
-            <p className="text-xl mb-8 text-white/90">
-              Your central hub for hackathons, workshops, and tech events from
-              every club on campus.
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link href="/events">
-                <Button
-                  size="lg"
-                  className="bg-white text-brand-red font-semibold hover:bg-gray-100"
-                >
-                  {" "}
-                  {/* CHANGED */}
-                  Browse Events
-                </Button>
-              </Link>
-              <Link href="/contact">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="text-white border-white hover:bg-white hover:text-brand-red"
-                >
-                  {" "}
-                  {/* CHANGED */}
-                  Contact Us
-                </Button>
-              </Link>
-            </div>
+            <FadeInUp duration={1000}>
+              <h1 className="text-5xl font-bold mb-6">Welcome to EventX</h1>
+            </FadeInUp>
+            <FadeInUp delay={200} duration={1000}>
+              <p className="text-xl mb-8 text-white/90">
+                Your central hub for hackathons, workshops, and tech events from
+                every club on campus.
+              </p>
+            </FadeInUp>
+            <FadeInUp delay={400} duration={1000}>
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                <MagneticButton>
+                  <Link href="/events">
+                    <Button
+                      size="lg"
+                      className="bg-white text-brand-red font-semibold hover:bg-gray-100"
+                      data-testid="browse-events-btn"
+                    >
+                      {" "}
+                      {/* CHANGED */}
+                      Browse Events
+                    </Button>
+                  </Link>
+                </MagneticButton>
+                <MagneticButton>
+                  <Link href="/contact">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="text-white border-white hover:bg-white hover:text-brand-red"
+                      data-testid="contact-us-btn"
+                    >
+                      {" "}
+                      {/* CHANGED */}
+                      Contact Us
+                    </Button>
+                  </Link>
+                </MagneticButton>
+              </div>
+            </FadeInUp>
           </div>
         </div>
       </section>
