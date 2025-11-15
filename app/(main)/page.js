@@ -8,6 +8,10 @@ import EventCard from "@/components/EventCard";
 import GradientText from "@/components/GradientText";
 import { Calendar, Users, Trophy, Zap, Building } from "lucide-react"; // Import Building
 import { parseISO } from 'date-fns'; // --- IMPORT parseISO ---
+import FadeInUp from "@/components/animations/FadeInUp";
+import ScaleIn from "@/components/animations/ScaleIn";
+import StaggerChildren from "@/components/animations/StaggerChildren";
+import MagneticButton from "@/components/animations/MagneticButton";
 
 export default function Home() {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
